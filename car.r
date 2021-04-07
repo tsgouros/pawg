@@ -4,20 +4,28 @@ library(tidyverse)
 ## deposits to compound to a future value.  cashFlow is a tibble
 ## with a 'year' column and a 'flow' column.
 
-fvFlow <- function(r, cf) {
-    nYears <- length(cf$year);
-    return(cf %>%
+## Apply a rate to a cash flow.  Also calculate the derivative, for
+## use with Newton's method.
+fvFlow <- function(rate, cashFlow) {
+    nYears <- length(cashFlow$year);
+    ## Return a modified cashFlow array with a couple of new columns
+    ## for the calculation.
+    return(cashFlow %>%
            mutate(reverseYear=nYears-row_number(),
-                  fv=flow*(r^(reverseYear)),
-                  fvp=reverseYear * flow * (r^(reverseYear - 1))));
+                  ## The future value of this money at the end of the term.
+                  fv=flow*(rate^(reverseYear)),
+                  ## The derivative at this point.
+                  fvp=reverseYear * flow * (rate^(reverseYear - 1))));
 }
 
+## Takes a step in the iteration that is Newton's method.
 newtonStep <- function(rateGuess, cashFlow, futureVal, verbose=FALSE) {
     ## Calculate the future value at the guess
     fvf <- fvFlow(rateGuess, cashFlow);
 
-    ## Calculate the value and the derivative.
+    ## Calculate the value...
     fv <- fvf %>% select(fv) %>% sum();
+    ## ... and the derivative.
     fvp <- fvf %>% select(fvp) %>% sum();
 
     if (verbose)
@@ -32,15 +40,15 @@ newtonStep <- function(rateGuess, cashFlow, futureVal, verbose=FALSE) {
 ## Given a first guess, uses Newton's method to find the rate
 ## necessary to make the given cash flow come out to the future value,
 ## at the end of the time described by the cash flow tibble.
-findRate <- function(cashFlow, futureVal, flowName="flow",
+findRate <- function(cashFlow, futureVal=0, flowName="flow",
                      maxIter=10, tolerance=0.001, verbose=FALSE) {
 
-    cf <- tibble(year=cashFlow$year, flow=cashFlow[,flowName]);
+    cashFlow <- tibble(year=cashFlow$year, flow=cashFlow[,flowName]);
 
     currentGuess <- 1;
     oldGuess <- 1;
     for (i in 1:maxIter) {
-        currentGuess <- newtonStep(oldGuess, cf, futureVal, verbose);
+        currentGuess <- newtonStep(oldGuess, cashFlow, futureVal, verbose);
         if (tolerance > abs(1 - (currentGuess / oldGuess))) break;
         oldGuess <- currentGuess;
     }
@@ -67,41 +75,16 @@ findRate <- function(cashFlow, futureVal, flowName="flow",
 ## and so on.
 ##
 ##
-## We represent the population of employees as a matrix, too, with the
-## rows representing age cohorts and the columns service tenure
-## durations.  Here's a fragment of the matrix:
-##
-## age. . .10 11 12 . . .
-##  . . . . .  .  . . . .
-##  . . . . .  .  . . . .
-##  . . . . .  .  . . . .
-## 33 . . . 1  0  0 . . .
-## 34 . . . 0  2  0 . . .
-## 35 . . . 0  0  0 . . .
-## 36 . . . 0  0  3 . . .
-##  . . . . .  .  . . . .
-##  . . . . .  .  . . . .
-##  . . . . .  .  . . . .
-##
-## This tells us there is a 33-year-old employee with 10 years of
-## service, two 34-year-olds with 11 years of service and three
-## 36-year-olds with 12 years of service.
-##
-## To advance this representation in time, someone who is employed
-## moves diagonally down and to the right, while someone who is still
-## alive and separated moves vertically downward.
-##
-## Let's not keep that matrix around as a matrix, but as something we
-## build from the list of once-and-former employees.
-##
 
-## To keep track of things, we will have a list containing a invariant
-## things for each employee (birth year, hire year, separation,
-## retirement, salary history).  This can be used to generate a table
-## representing the system at any one instant, and that can be used to
-## generate the tables shown above, as needed, for any particular year.
+##### SYSTEM SPECIFIC DEFINITIONS
 
-salIncrement <- function(age) {
+## We define some things that are specific to the pension system under
+## examination.
+
+## First, the assumed salary increment, from the table of merit
+## increases in each valuation report.  Class refers to any kind of
+## subdivision among the members.
+salIncrement <- function(age, service=1, class="NONE") {
 
     if (age < 25) {
         out <- 1.075;
@@ -125,22 +108,22 @@ salIncrement <- function(age) {
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
- doIseparate <- function(age, service, status) {
-     ## If I'm not currently an active employee, get out.
-     if (status != "active") return(status);
+doesMemberSeparate <- function(age, service, status, class="NONE") {
+    ## If this is not currently an active employee, get out.
+    if (status != "active") return(status);
 
-     rates <- c(0.070, 0.045, 0.037, 0.030, 0.025,
-                0.017, 0.017, 0.017, 0.017, 0.015,
-                0.011, 0.007, 0.007, 0.007, 0.006,
-                0.005, 0.005, 0.004, 0.004, 0.004);
+    rates <- c(0.070, 0.045, 0.037, 0.030, 0.025,
+               0.017, 0.017, 0.017, 0.017, 0.015,
+               0.011, 0.007, 0.007, 0.007, 0.006,
+               0.005, 0.005, 0.004, 0.004, 0.004);
 
-     service <- min(service, 20);
-     if (runif(1) < rates[service]) status <- "separated";
+    service <- min(service, 20);
+    if (runif(1) < rates[service]) status <- "separated";
 
-     return(status);
- }
+    return(status);
+}
 
-doIretire <- function(age, service, status) {
+doesMemberRetire <- function(age, service, status) {
     ## If already retired, get out.
     if (status == "retired") return(status);
 
@@ -160,6 +143,23 @@ doIretire <- function(age, service, status) {
     }
 
     return(status);
+}
+
+projectPension <- function(salaryHistory) {
+    return( max(salaryHistory$salary) * 0.55);
+}
+
+## What's the annuitized cost of a pension at the moment of retirement?
+projectPensionCost <- function(pension, retireAge) {
+    return((77 - retireAge) * pension);
+}
+
+## Accepts a salary history tibble and adds a column for the estimated
+## premiums paid into the system for this employee for each year.
+## (Combined employer and employee share.)
+projectPremiums <- function(salaryHistory) {
+    return(salaryHistory %>%
+           mutate(premium = salary * .2265))
 }
 
 
@@ -207,8 +207,10 @@ projectCareer <- function(year, age, service, salary) {
         testAge <- age - (year - iyear);
 
         ## Test for transitions.
-        currentStatus <- doIseparate(testAge, currentService, currentStatus);
-        currentStatus <- doIretire(testAge, currentService, currentStatus);
+        currentStatus <-
+            doesMemberSeparate(testAge, currentService, currentStatus);
+        currentStatus <-
+            doesMemberRetire(testAge, currentService, currentStatus);
 
         salaries <- c(salaries,
                       ifelse(currentStatus == "active",
@@ -230,23 +232,14 @@ projectCareer <- function(year, age, service, salary) {
 
     return(tibble(year=years,
                   salary=salaries,
-                  premiums=salaries * 0.2265,
                   age=ages,
                   service=services,
                   status=factor(statuses,
-                                levels=c("active", "separated", "retired"))));
+                                levels=c("active", "separated",
+                                         "retired", "deceased"))));
 }
 
-projectPension <- function(salaryHistory) {
-    return( max(salaryHistory$salary) * 0.55);
-}
-
-## What's the annuitized cost of a pension at the moment of retirement?
-projectPensionCost <- function(pension, retireAge) {
-    return((77 - retireAge) * pension);
-}
-
-## Here's an object for an member, initialized for some specific
+## Here's an object for a member, initialized for some specific
 ## year.  The inputs are ages and years of service because that's what
 ## is published in the pension report tables.
 member <- function(age=0, service=0, salary=0,
@@ -269,7 +262,10 @@ member <- function(age=0, service=0, salary=0,
     }
 
     ## Generate an entire career's worth of salary history.
-    salaryHistory <- projectCareer(currentYear, age, service, salary)
+    salaryHistory <- projectCareer(currentYear, age, service, salary);
+
+    ## Add the premiums paid into the system.
+    salaryHistory <- projectPremiums(salaryHistory);
 
     ## If this member gets to retire, estimate pension.
     if ("retired" %in% salaryHistory$status) {
@@ -288,12 +284,11 @@ member <- function(age=0, service=0, salary=0,
         sepYear <- NA;
     }
 
-    ## Estimate CAR.  The number 13 here is a rough estimate of the
-    ## annuitized cost of the pension given by the benefit formula.
+    ## Estimate CAR for this employee.
     if (pension > 0) {
         car <- findRate(salaryHistory,
                         projectPensionCost(pension, max(salaryHistory$age)),
-                        flowName="premiums");
+                        flowName="premium");
     } else {
         car <- NA;
     }
