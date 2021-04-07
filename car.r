@@ -81,29 +81,6 @@ findRate <- function(cashFlow, futureVal=0, flowName="flow",
 ## We define some things that are specific to the pension system under
 ## examination.
 
-## First, the assumed salary increment, from the table of merit
-## increases in each valuation report.  Class refers to any kind of
-## subdivision among the members.
-salIncrement <- function(age, service=1, class="NONE") {
-
-    if (age < 25) {
-        out <- 1.075;
-    } else if ((age >= 25) & (age < 30)) {
-        out <- 1.0735;
-    } else if ((age >= 30) & (age < 35)) {
-        out <- 1.0674;
-    } else if ((age >= 35) & (age < 40)) {
-        out <- 1.0556;
-    } else if ((age >= 40) & (age < 45)) {
-        out <- 1.0446;
-    } else if ((age >= 45) & (age < 50)) {
-        out <- 1.0374;
-    } else if (age >= 50) {
-        out <- 1.035;
-    }
-
-    return(out);
-}
 
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
@@ -123,7 +100,7 @@ doesMemberSeparate <- function(age, service, status, class="NONE") {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status) {
+doesMemberRetire <- function(age, service, status, class="NONE") {
     ## If already retired, get out.
     if (status == "retired") return(status);
 
@@ -143,6 +120,38 @@ doesMemberRetire <- function(age, service, status) {
     }
 
     return(status);
+}
+
+## Defines the function 'doesMemberDie' using the pubs 2010 mortality
+## tables in the mortalityTables subdirectory.
+##source("mortality.r")
+doesMemberDie <- function(age, status, class="NONE") {
+    if (status == "retired") return("deceased");
+    return(status);
+}
+
+## The assumed salary increment, from the table of merit increases in
+## each valuation report.  Class refers to any kind of subdivision
+## among the members.
+projectSalary <- function(age, service=1, class="NONE") {
+
+    if (age < 25) {
+        out <- 1.075;
+    } else if ((age >= 25) & (age < 30)) {
+        out <- 1.0735;
+    } else if ((age >= 30) & (age < 35)) {
+        out <- 1.0674;
+    } else if ((age >= 35) & (age < 40)) {
+        out <- 1.0556;
+    } else if ((age >= 40) & (age < 45)) {
+        out <- 1.0446;
+    } else if ((age >= 45) & (age < 50)) {
+        out <- 1.0374;
+    } else if (age >= 50) {
+        out <- 1.035;
+    }
+
+    return(out);
 }
 
 projectPension <- function(salaryHistory) {
@@ -169,7 +178,7 @@ projectPremiums <- function(salaryHistory) {
 ## retirement, and backward to the initial hire.  Returns a tibble
 ## with salary figures for each working year, and a status column for
 ## active, separated, or retired.
-projectCareer <- function(year, age, service, salary) {
+projectCareer <- function(year, age, service, salary, class="NONE") {
 
     salaries <- c(salary);
     ages <- c(age);
@@ -184,7 +193,7 @@ projectCareer <- function(year, age, service, salary) {
             ages <- c(ages, age - (year - iyear));
             services <- c(services, service - (year - iyear));
             salaries <- c(salaries,
-                          tail(salaries, 1)/salIncrement(age - (year - iyear)));
+                          tail(salaries, 1)/projectSalary(age - (year - iyear)));
             statuses <- c(statuses, "active");
             years <- c(years, iyear);
         }
@@ -199,14 +208,16 @@ projectCareer <- function(year, age, service, salary) {
     services <- services[ord];
 
     ## Now march forward through a simulated career.  Stop when you
-    ## hit "retired."
+    ## hit "deceased."
     currentStatus <- "active";
     currentService <- service + 1;
-    for (iyear in seq(from = year + 1, to = year + (70 - age))) {
+    for (iyear in seq(from = year + 1, to = year + (110 - age))) {
         ##cat("projecting for", iyear, "\n");
         testAge <- age - (year - iyear);
 
         ## Test for transitions.
+        currentStatus <-
+            doesMemberDie(testAge, currentStatus);
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
         currentStatus <-
@@ -214,14 +225,15 @@ projectCareer <- function(year, age, service, salary) {
 
         salaries <- c(salaries,
                       ifelse(currentStatus == "active",
-                             tail(salaries, 1)*salIncrement(age-(year-iyear)),
+                             tail(salaries, 1) * projectSalary(age-(year-iyear),
+                                                               class),
                              0));
         ages <- c(ages, testAge);
         services <- c(services, currentService);
         statuses <- c(statuses, currentStatus);
         years <- c(years, iyear);
 
-        if (currentStatus == "retired") break;
+        if (currentStatus == "deceased") break;
 
         ## Add a service year if still active.  Note that the ending
         ## total of service years will be one year too large.  This is
