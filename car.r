@@ -315,7 +315,7 @@ member <- function(age=0, service=0, salary=0,
     }
 
     ## Estimate CAR for this employee.
-    if (pension > 0) {
+    if ("retired" %in% salaryHistory$status) {
         car <- findRate(salaryHistory %>% mutate(netFlow = salary - pension),
                         flowName="netFlow");
     } else {
