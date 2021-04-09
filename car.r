@@ -4,58 +4,10 @@ library(tidyverse)
 ## deposits to compound to a future value.  cashFlow is a tibble
 ## with a 'year' column and a 'flow' column.
 
-## Apply a rate to a cash flow.  Also calculate the derivative, for
-## use with Newton's method.
-fvFlow <- function(rate, cashFlow) {
-    nYears <- length(cashFlow$year);
-    ## Return a modified cashFlow array with a couple of new columns
-    ## for the calculation.
-    return(cashFlow %>%
-           mutate(reverseYear=nYears-row_number(),
-                  ## The future value of this money at the end of the term.
-                  fv=flow*(rate^(reverseYear)),
-                  ## The derivative at this point.
-                  fvp=reverseYear * flow * (rate^(reverseYear - 1))));
-}
+source("newton.r")
+source("mortality.r")
 
-## Takes a step in the iteration that is Newton's method.
-newtonStep <- function(rateGuess, cashFlow, futureVal, verbose=FALSE) {
-    ## Calculate the future value at the guess
-    fvf <- fvFlow(rateGuess, cashFlow);
-
-    ## Calculate the value...
-    fv <- fvf %>% select(fv) %>% sum();
-    ## ... and the derivative.
-    fvp <- fvf %>% select(fvp) %>% sum();
-
-    if (verbose)
-        cat("Future val:", fv, "slope:",  fvp,
-            "target:", futureVal, "rate", rateGuess, "\n");
-
-    nextStep <- rateGuess - (futureVal - fv)/(-fvp);
-
-    return(nextStep);
-}
-
-## Given a first guess, uses Newton's method to find the rate
-## necessary to make the given cash flow come out to the future value,
-## at the end of the time described by the cash flow tibble.
-findRate <- function(cashFlow, futureVal=0, flowName="flow",
-                     maxIter=10, tolerance=0.001, verbose=FALSE) {
-
-    cashFlow <- tibble(year=cashFlow$year, flow=cashFlow[,flowName]);
-
-    currentGuess <- 1;
-    oldGuess <- 1;
-    for (i in 1:maxIter) {
-        currentGuess <- newtonStep(oldGuess, cashFlow, futureVal, verbose);
-        if (tolerance > abs(1 - (currentGuess / oldGuess))) break;
-        oldGuess <- currentGuess;
-    }
-    return(currentGuess);
-}
-
-## So every year, premiums are collected for everyone.  Imagine a big
+## Every year, premiums are collected for everyone.  Imagine a big
 ## matrix of premium payments, where each row represents a year of
 ## premiums, and each column is all the actives who will retire in a
 ## class.
@@ -124,11 +76,11 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
 
 ## Defines the function 'doesMemberDie' using the pubs 2010 mortality
 ## tables in the mortalityTables subdirectory.
-##source("mortality.r")
-doesMemberDie <- function(age, status, class="NONE") {
-    if (status == "retired") return("deceased");
-    return(status);
-}
+source("mortality.r")
+##doesMemberDie <- function(age, status, class="NONE") {
+##    if (status == "retired") return("deceased");
+##    return(status);
+##}
 
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.  Class refers to any kind of subdivision
@@ -156,8 +108,8 @@ projectSalary <- function(age, service=1, class="NONE") {
 
 projectPension <- function(salaryHistory) {
 
-    startingPension <- 14 * max(salaryHistory$salary) * 0.55;
-    cola <- 1.0;
+    startingPension <- max(salaryHistory$salary) * 0.55;
+    cola <- 1.02;
 
     ## This shouldn't be true ever, but if this person never retired,
     ## send them away without a pension.
@@ -232,7 +184,7 @@ projectCareer <- function(year, age, service, salary, class="NONE", verbose=FALS
 
         ## Test for transitions.
         currentStatus <-
-            doesMemberDie(testAge, currentStatus);
+            doesMemberDie(testAge, "male", currentStatus);
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
         currentStatus <-
@@ -274,7 +226,7 @@ projectCareer <- function(year, age, service, salary, class="NONE", verbose=FALS
 member <- function(age=0, service=0, salary=0,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
-                   status="active") {
+                   status="active", verbose=FALSE) {
 
     if ((birthYear == 0) & (age != 0)) {
         birthYear <- currentYear - age;
@@ -301,10 +253,8 @@ member <- function(age=0, service=0, salary=0,
         salaryHistory <- projectPension(salaryHistory);
         retireYear <- as.numeric(salaryHistory %>%
             filter(status=="retired") %>% summarize(retireYear=min(year)));
-        pension <- 0;
     } else {
         retireYear <- NA;
-        pension <- 0 ;
     }
 
     if ("separated" %in% salaryHistory$status) {
@@ -316,8 +266,8 @@ member <- function(age=0, service=0, salary=0,
 
     ## Estimate CAR for this employee.
     if ("retired" %in% salaryHistory$status) {
-        car <- findRate(salaryHistory %>% mutate(netFlow = salary - pension),
-                        flowName="netFlow");
+        car <- findRate(salaryHistory %>% mutate(netFlow = premium - pension),
+                        flowName="netFlow", verbose=verbose);
     } else {
         car <- NA;
     }
@@ -329,7 +279,6 @@ member <- function(age=0, service=0, salary=0,
                 hireYear=hireYear,
                 sepYear=sepYear,
                 retireYear=retireYear,
-                pension=pension,
                 car=car,
                 salaryHistory=salaryHistory);
     attr(out, "class") <- "member";
@@ -359,7 +308,6 @@ format.member <- function(m, ...) {
                   format(career$endSalary[1], digits=5, big.mark=","), ")");
 
     out <- paste0(out, "\n",
-                  "     pension: ", format(m$pension, digits=5, big.mark=","),
                   "  car: ", format(m$car, digits=4));
 
     return(out);
@@ -476,7 +424,6 @@ makeTbl <- function(memberList) {
                             sepYear=c(member$sepYear),
                             retireYear=c(member$retireYear),
                             maxSalary=c(max(member$salaryHistory$salary)),
-                            pension=c(member$pension),
                             car=c(member$car)));
     }
 
