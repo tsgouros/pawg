@@ -1,6 +1,8 @@
 ## Reads data from the pubs 2010 mortality tables and uses them in a
 ## function we can call to roll the dice for some particular plan
 ## member.
+##
+## See https://www.soa.org/resources/research-reports/2019/pub-2010-retirement-plans/
 library(tidyverse)
 library(readxl)
 
