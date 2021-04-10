@@ -24,7 +24,8 @@ source("mortality.r")
 ##
 ## The "1" class (first column) retires at the end of year 1, so
 ## receives its pension benefits in year 2.  The 2 class retires at
-## the end of year 2, and so on.
+## the end of year 2, and so on.  We refer to this below as the master
+## cash flow matrix.
 ##
 ##
 
@@ -456,6 +457,8 @@ buildMasterCashFlow <- function(memberTbl, members, verbose=FALSE) {
                               ifelse(x=="flow",
                                      paste0('R',retireClass), x)}));
     }
+
+    out <- out %>% mutate(sum=rowSums(across(where(is.double)))) ;
 
     return(tibble(out));
 }
