@@ -9,30 +9,30 @@ source("mortality.r")
 
 ## Every year, premiums are collected for everyone.  Imagine a big
 ## matrix of premium payments, where each row represents a year of
-## premiums, and each column is all the actives who will retire in a
-## class.
+## premiums (P) and pension payments (R), and each column is all the
+## actives who will retire in a class.
 ##
 ## year
 ##   1   P11   P12   P13   P14   P15 ...
-##   2     0   P22   P23   P24   P25 ...
-##   3     0     0   P33   P34   P35 ...
-##   4     0     0     0   P44   P45 ...
-##   5     0     0     0     0   P55 ...
+##   2   R21   P22   P23   P24   P25 ...
+##   3   R31   R32   P33   P34   P35 ...
+##   4   R41   R42   R43   P44   P45 ...
+##   5   R51   R52   R53   R54   P55 ...
 ##   6     .     .     .     .    .  ...
 ##   7     .     .     .     .    .  ...
 ##   8     .     .     .     .    .  ...
 ##
-## The "1" class (first column) retires at the end of year 1, so pays
-## no premium for year 2.  The 2 class retires at the end of year 2,
-## and so on.
+## The "1" class (first column) retires at the end of year 1, so
+## receives its pension benefits in year 2.  The 2 class retires at
+## the end of year 2, and so on.
 ##
 ##
 
 ##### SYSTEM SPECIFIC DEFINITIONS
 
-## We define some things that are specific to the pension system under
-## examination.
-
+## These are specific to the pension plan in question.  Definitions
+## should be overridden with definitions from the data in the
+## appropriate valuation report.
 
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
@@ -77,10 +77,6 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
 ## Defines the function 'doesMemberDie' using the pubs 2010 mortality
 ## tables in the mortalityTables subdirectory.
 source("mortality.r")
-##doesMemberDie <- function(age, status, class="NONE") {
-##    if (status == "retired") return("deceased");
-##    return(status);
-##}
 
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.  Class refers to any kind of subdivision
@@ -111,8 +107,7 @@ projectPension <- function(salaryHistory) {
     startingPension <- max(salaryHistory$salary) * 0.55;
     cola <- 1.02;
 
-    ## This shouldn't be true ever, but if this person never retired,
-    ## send them away without a pension.
+    ## If this person never retired, send them away without a pension.
     if (!("retired" %in% salaryHistory$status))
         return(salaryHistory %>% mutate(pension = 0));
 
@@ -142,7 +137,8 @@ projectPremiums <- function(salaryHistory) {
 ## retirement, and backward to the initial hire.  Returns a tibble
 ## with salary figures for each working year, and a status column for
 ## active, separated, or retired.
-projectCareer <- function(year, age, service, salary, class="NONE", verbose=FALSE) {
+projectCareer <- function(year, age, service, salary, class="General",
+                          verbose=FALSE) {
 
     salaries <- c(salary);
     ages <- c(age);
@@ -184,7 +180,7 @@ projectCareer <- function(year, age, service, salary, class="NONE", verbose=FALS
 
         ## Test for transitions.
         currentStatus <-
-            doesMemberDie(testAge, "male", currentStatus);
+            doesMemberDie(testAge, "male", currentStatus, memberClass=class);
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
         currentStatus <-
@@ -223,7 +219,7 @@ projectCareer <- function(year, age, service, salary, class="NONE", verbose=FALS
 ## Here's an object for a member, initialized for some specific
 ## year.  The inputs are ages and years of service because that's what
 ## is published in the pension report tables.
-member <- function(age=0, service=0, salary=0,
+member <- function(age=0, service=0, salary=0, class="General",
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
                    status="active", verbose=FALSE) {
@@ -289,7 +285,8 @@ member <- function(age=0, service=0, salary=0,
 #change this to format / print.
 format.member <- function(m, ...) {
     out <- paste0("birthYear: ", m$birthYear,
-                  ", hireYear: ", m$hireYear,
+                  ", deathYear: ", max(m$salaryHistory$year),
+                  "\n     hireYear: ", m$hireYear,
                   ", sepYear: ", m$sepYear,
                   ", retireYear: ", m$retireYear);
 
@@ -307,8 +304,21 @@ format.member <- function(m, ...) {
                   " -> (", career$endYear[1], ", ",
                   format(career$endSalary[1], digits=5, big.mark=","), ")");
 
+    if (!is.na(m$retireYear)) {
+        retirement <- m$salaryHistory %>%
+            group_by(status) %>%
+            summarize(startYear=first(year), startPension=first(pension),
+                      endYear=last(year), endPension=last(pension)) %>%
+            filter(status == "retired");
+        out <- paste0(out, "\n",
+                  "     pension:       (", retirement$startYear[1], ", ",
+                  format(retirement$startPension[1], digits=5, big.mark=","), ") ",
+                  " -> (", retirement$endYear[1], ", ",
+                  format(retirement$endPension[1], digits=5, big.mark=","), ")");
+    }
+
     out <- paste0(out, "\n",
-                  "  car: ", format(m$car, digits=4));
+                  "     car: ", format(m$car, digits=4));
 
     return(out);
 }
@@ -354,7 +364,7 @@ print.memberList <- function(ml, ...) {
 ## them to the input list of members.
 genEmployees <- function (N=1, ageRange=c(20,25), servRange=c(0,5),
                          avgSalary=75000, members=memberList(),
-                         status="active") {
+                         class="General", status="active") {
 
     ages <- round(runif(N)*(ageRange[2] - ageRange[1])) + ageRange[1];
     servs <- round(runif(N)*(servRange[2] - servRange[1])) + servRange[1];
@@ -368,50 +378,6 @@ genEmployees <- function (N=1, ageRange=c(20,25), servRange=c(0,5),
     return(members);
 }
 
-
-
-
-## Let's model the Queen Creek fire department.
-qcFireN <- 0;
-qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4),
-                       avgSalary=71362);
-qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4),
-                       avgSalary=73683, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9),
-                       avgSalary=73683, members=qcFire);
-
-qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4),
-                       avgSalary=80728, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9),
-                       avgSalary=84728, members=qcFire);
-
-qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4),
-                       avgSalary=84728, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9),
-                       avgSalary=94728, members=qcFire);
-qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14),
-                       avgSalary=115728, members=qcFire);
-
-qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4),
-                       avgSalary=92728, members=qcFire);
-qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9),
-                       avgSalary=94728, members=qcFire);
-qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14),
-                       avgSalary=112728, members=qcFire);
-
-qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9),
-                       avgSalary=94730, members=qcFire);
-qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14),
-                       avgSalary=110730, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
-                       avgSalary=140130, members=qcFire);
-
-qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14),
-                       avgSalary=120730, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
-                       avgSalary=124730, members=qcFire);
-
-
 makeTbl <- function(memberList) {
 
     out <- tibble();
@@ -419,33 +385,78 @@ makeTbl <- function(memberList) {
     for (member in memberList) {
         out <- rbind(out,
                      tibble(id=c(member$id),
-                            birthYear=c(member$birthYear),
                             hireYear=c(member$hireYear),
                             sepYear=c(member$sepYear),
                             retireYear=c(member$retireYear),
                             maxSalary=c(max(member$salaryHistory$salary)),
-                            car=c(member$car)));
+                            car=c(member$car),
+                            birthYear=c(member$birthYear),
+                            deathYear=c(max(member$salaryHistory$year))));
     }
 
     return(out);
 }
 
-qcFireTbl <- makeTbl(qcFire);
+## Build the master cash flow matrix.  This involves grouping retirees
+## by retirement date and aggregating them.
+buildMasterCashFlow <- function(memberTbl, members, verbose=FALSE) {
 
-## Here's a class to create a big list of employee salary histories.
-## Each entry is a tibble of years and salaries for the employee with
-## a given ID.
-initializeSalaryList <- function(elist, employeeTable, year=2018) {
+    ## Our master cash flow will begin at the earliest hire date and
+    ## end at the latest death date.
+    startYear <- min(memberTbl$hireYear);
+    endYear <- max(memberTbl$deathYear);
 
-    for (i in 1:length(employeeTable$id)) {
-        elist[[ employeeTable$id[i] ]] <-
-            tibble(year=c(year), history=c(employeeTable$salary[i]));
+    ## Get all the retireYears, in order.
+    retireYears <- unique(memberTbl$retireYear)
+    retireYears <- retireYears[order(retireYears, na.last=NA)];
+
+    ## Initialize output tbl.
+    out <- tibble(year=startYear:endYear);
+    nYears <- endYear - startYear + 1;
+
+    if (verbose) cat("Starting at", startYear, "ending at", endYear,
+                     "n =", nYears, "\n");
+
+    ## Loop through all the potential retirement classes, even if
+    ## they're empty.
+    for (retireClass in min(retireYears):max(retireYears)) {
+
+        if (verbose) cat("Considering retirement class", retireClass, "\n");
+
+        ## Initialize an empty row to hold the cash flow from this class.
+        collectiveCashFlow <- rep(0, nYears);
+
+        if (retireClass %in% retireYears) {
+
+            classMemberIDs <- memberTbl %>%
+                filter(retireYear == retireClass) %>%
+                select(id);
+
+            if (verbose) print(classMemberIDs);
+
+            ## Now add the cash flow from each member of that retirement
+            ## class to the collective cash flow.
+            for (id in classMemberIDs$id) {
+                if (verbose) cat("adding", id, format(members[[id]]), "\n");
+
+                for (iyear in members[[id]]$salaryHistory$year) {
+                    yearsFlow <- as.numeric(members[[id]]$salaryHistory %>%
+                        filter(year == iyear) %>%
+                        mutate(flow = premium - pension) %>%
+                        select(flow));
+                    collectiveCashFlow[1 + iyear - startYear] <-
+                        collectiveCashFlow[1 + iyear - startYear] + yearsFlow;
+                }
+            }
         }
 
-    return(elist);
+        ## Add the column for this class.
+        out <- cbind(out, tibble(flow=collectiveCashFlow) %>%
+                          rename_with(function(x) {
+                              ifelse(x=="flow",
+                                     paste0('R',retireClass), x)}));
+    }
+
+    return(tibble(out));
 }
-
-
-
-
 
