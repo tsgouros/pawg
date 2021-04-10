@@ -55,6 +55,10 @@ findRate <- function(cashFlow, futureVal=0, flowName="flow",
             select(year, flow);
     }
 
+    ## Check to see if this is empty or pathological.  We have to have
+    ## at least one entry above zero.
+    if (cashFlow %>% select(flow) %>% max() <= 0) return(1);
+
     if (verbose) cat("flowName:", flowName, "\n");
 
     currentGuess <- firstGuess;
