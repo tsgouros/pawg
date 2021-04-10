@@ -101,44 +101,83 @@ projectPremiums <- function(salaryHistory) {
 
 ## Let's model the Queen Creek fire department.  This data is from the
 ## valuation report, the member population table.
-qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4),
-                       avgSalary=71362);
-qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4),
-                       avgSalary=73683, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9),
-                       avgSalary=73683, members=qcFire);
+qcModel <- function() {
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4),
+                           avgSalary=71362);
+    qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4),
+                           avgSalary=73683, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9),
+                           avgSalary=73683, members=qcFire);
 
-qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4),
-                       avgSalary=80728, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9),
-                       avgSalary=84728, members=qcFire);
+    qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4),
+                           avgSalary=80728, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9),
+                           avgSalary=84728, members=qcFire);
 
-qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4),
-                       avgSalary=84728, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9),
-                       avgSalary=94728, members=qcFire);
-qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14),
-                       avgSalary=115728, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4),
+                           avgSalary=84728, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9),
+                           avgSalary=94728, members=qcFire);
+    qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14),
+                           avgSalary=115728, members=qcFire);
 
-qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4),
-                       avgSalary=92728, members=qcFire);
-qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9),
-                       avgSalary=94728, members=qcFire);
-qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14),
-                       avgSalary=112728, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4),
+                           avgSalary=92728, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9),
+                           avgSalary=94728, members=qcFire);
+    qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14),
+                           avgSalary=112728, members=qcFire);
 
-qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9),
-                       avgSalary=94730, members=qcFire);
-qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14),
-                       avgSalary=110730, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
-                       avgSalary=140130, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9),
+                           avgSalary=94730, members=qcFire);
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14),
+                           avgSalary=110730, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
+                           avgSalary=140130, members=qcFire);
 
-qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14),
-                       avgSalary=120730, members=qcFire);
-qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
-                       avgSalary=124730, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14),
+                           avgSalary=120730, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
+                           avgSalary=124730, members=qcFire);
 
-## Make a summary table of all the members.
-qcFireTbl <- makeTbl(qcFire);
+    return(qcFire);
+}
+
+cat(date(),"\n")
+qcCARData <- tibble(ryear=c(), car=c());
+for (i in 1:500) {
+
+    qcFire <- qcModel();
+
+    ## Make a summary table of all the members.
+    qcFireTbl <- makeTbl(qcFire);
+
+    ## Build the master cash flow matrix.
+    qcFireMCF <- buildMasterCashFlow(qcFireTbl, qcFire);
+
+    qcFireCAR <- findRate(qcFireMCF, flowName="sum");
+    qcCARData <- rbind(qcCARData, tibble(ryear=c(1000), car=c(qcFireCAR - 1)));
+
+    rates <- c()
+    years <- c()
+    for (i in 1:(dim(qcFireMCF)[2] - 2)) {
+        newYear <- min(qcFireTbl$retireYear, na.rm=TRUE) + i - 1;
+        newRate <- findRate(qcFireMCF, flowName=paste0("R", newYear));
+        rates <- c(rates, -1 + newRate);
+        years <- c(years, newYear);
+
+        if (newRate != 1.0) {
+            qcCARData <-
+                rbind(qcCARData, tibble(ryear=c(newYear), car=c(newRate - 1)));
+        }
+    }
+
+    qcFireCARs <- tibble(year=years, rate=rates);
+    rm(years, rates);
+
+}
+cat(date(),"\n")
+
+library(ggplot2)
+qcFireCARPlot <- ggplot(qcFireCARs) + geom_point(aes(x=year, y=rate))
 
