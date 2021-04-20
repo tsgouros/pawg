@@ -3,7 +3,8 @@ source("car.r")
 
 ## System-specific information.
 ##
-## This uses valuation data from the Queen Creek (AZ) Fire Department, 4/21
+## This example uses valuation data from the Queen Creek (AZ) Fire
+## Department, 4/21
 ##
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
@@ -48,7 +49,7 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.  Class refers to any kind of subdivision
 ## among the members.
-projectSalary <- function(age, service=1, class="NONE") {
+projectSalaryDelta <- function(age, service=1, tier="None") {
 
     if (age < 25) {
         out <- 1.075;
@@ -71,7 +72,7 @@ projectSalary <- function(age, service=1, class="NONE") {
 
 projectPension <- function(salaryHistory) {
 
-    startingPension <- max(salaryHistory$salary) * 0.55;
+    startingPension <- max(salaryHistory$salary) * 0.605;
     cola <- 1.02;
 
     ## If this person never retired, send them away without a pension.
@@ -143,41 +144,73 @@ qcModel <- function() {
     return(qcFire);
 }
 
-cat(date(),"\n")
-qcCARData <- tibble(ryear=c(), car=c());
-for (i in 1:500) {
+qcRunModel <- function(N=10) {
 
-    qcFire <- qcModel();
+    cat("Starting run on:", date(),"\n");
 
-    ## Make a summary table of all the members.
-    qcFireTbl <- makeTbl(qcFire);
+    ## Prepare the output, just a record of years and CAR estimates.
+    modelOut <- tibble(ryear=c(), car=c());
 
-    ## Build the master cash flow matrix.
-    qcFireMCF <- buildMasterCashFlow(qcFireTbl, qcFire);
+    for (i in 1:N) {
 
-    qcFireCAR <- findRate(qcFireMCF, flowName="sum");
-    qcCARData <- rbind(qcCARData, tibble(ryear=c(1000), car=c(qcFireCAR - 1)));
+        qcFire <- qcModel();
 
-    rates <- c()
-    years <- c()
-    for (i in 1:(dim(qcFireMCF)[2] - 2)) {
-        newYear <- min(qcFireTbl$retireYear, na.rm=TRUE) + i - 1;
-        newRate <- findRate(qcFireMCF, flowName=paste0("R", newYear));
-        rates <- c(rates, -1 + newRate);
-        years <- c(years, newYear);
+        ## Make a summary table of all the members.
+        qcFireTbl <- makeTbl(qcFire);
 
-        if (newRate != 1.0) {
-            qcCARData <-
-                rbind(qcCARData, tibble(ryear=c(newYear), car=c(newRate - 1)));
+        ## Build the master cash flow matrix.
+        qcFireMCF <- buildMasterCashFlow(qcFireTbl, qcFire);
+
+        qcFireCAR <- findRate(qcFireMCF, flowName="sum");
+
+        ## We record the aggregate CAR under the year 1000.
+        modelOut <-
+            rbind(modelOut,
+                  tibble(ryear=c(1000), car=c(qcFireCAR - 1)));
+
+        rates <- c()
+        years <- c()
+        for (i in 1:(dim(qcFireMCF)[2] - 2)) {
+            newYear <- min(qcFireTbl$retireYear, na.rm=TRUE) + i - 1;
+            newRate <- findRate(qcFireMCF, flowName=paste0("R", newYear));
+            rates <- c(rates, -1 + newRate);
+            years <- c(years, newYear);
+
+            if (newRate != 1.0) {
+                ## If no error, record the rate for this retirement class.
+                modelOut <-
+                    rbind(modelOut,
+                          tibble(ryear=c(newYear), car=c(newRate - 1)));
+            }
         }
+
+        qcFireCARs <- tibble(year=years, rate=rates);
+        rm(years, rates);
+
     }
+    cat("Ending run on:", date(),"\n");
 
-    qcFireCARs <- tibble(year=years, rate=rates);
-    rm(years, rates);
-
+    return(modelOut);
 }
-cat(date(),"\n")
 
 library(ggplot2)
 qcFireCARPlot <- ggplot(qcFireCARs) + geom_point(aes(x=year, y=rate))
 
+plotResult <- function(modelOut) {
+
+    modelOutSummary <-
+        modelOut %>%
+        group_by(ryear) %>%
+        summarize(car=mean(car));
+
+    modelOutAvg <- modelOutSummary %>%
+        filter(ryear == 1000) %>% select(car) %>% as.numeric();
+
+    plotOut <- ggplot(modelOutSummary %>% filter(ryear > 1900)) +
+        geom_point(aes(x=ryear, y=car), color="blue") +
+        ylim(c(0,.1)) +
+        geom_hline(yintercept=modelOutAvg, color="red") +
+        labs(x="retirement class", y="CAR");
+
+    return(plotOut);
+}

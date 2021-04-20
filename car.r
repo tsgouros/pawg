@@ -80,9 +80,9 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
 source("mortality.r")
 
 ## The assumed salary increment, from the table of merit increases in
-## each valuation report.  Class refers to any kind of subdivision
+## each valuation report.  Tier refers to any kind of subdivision
 ## among the members.
-projectSalary <- function(age, service=1, class="NONE") {
+projectSalaryDelta <- function(age, service=1, tier="None") {
 
     if (age < 25) {
         out <- 1.075;
@@ -128,7 +128,7 @@ projectPension <- function(salaryHistory) {
 ## (Combined employer and employee share.)
 projectPremiums <- function(salaryHistory) {
     return(salaryHistory %>%
-           mutate(premium = salary * .2265))
+           mutate(premium = salary * .25))
 }
 
 
@@ -138,7 +138,8 @@ projectPremiums <- function(salaryHistory) {
 ## retirement, and backward to the initial hire.  Returns a tibble
 ## with salary figures for each working year, and a status column for
 ## active, separated, or retired.
-projectCareer <- function(year, age, service, salary, class="General",
+projectCareer <- function(year, age, service, salary,
+                          mortClass="General", tier="None",
                           verbose=FALSE) {
 
     salaries <- c(salary);
@@ -153,8 +154,11 @@ projectCareer <- function(year, age, service, salary, class="General",
             ## cat("calculating for", iyear, "\n");
             ages <- c(ages, age - (year - iyear));
             services <- c(services, service - (year - iyear));
-            salaries <- c(salaries,
-                          tail(salaries, 1)/projectSalary(age - (year - iyear)));
+            salaries <-
+                c(salaries,
+                  tail(salaries, 1)/projectSalaryDelta(age - (year - iyear),
+                                                       service=service,
+                                                       tier=tier));
             statuses <- c(statuses, "active");
             years <- c(years, iyear);
         }
@@ -181,7 +185,8 @@ projectCareer <- function(year, age, service, salary, class="General",
 
         ## Test for transitions.
         currentStatus <-
-            doesMemberDie(testAge, "male", currentStatus, memberClass=class);
+            doesMemberDie(testAge, "male", currentStatus,
+                          memberClass=mortClass);
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
         currentStatus <-
@@ -189,11 +194,13 @@ projectCareer <- function(year, age, service, salary, class="General",
 
         if (verbose) cat (", end ", currentStatus, ".\n", sep="");
 
-        salaries <- c(salaries,
-                      ifelse(currentStatus == "active",
-                             tail(salaries, 1) * projectSalary(age-(year-iyear),
-                                                               class),
-                             0));
+        salaries <-
+            c(salaries,
+              ifelse(currentStatus == "active",
+                     tail(salaries, 1) * projectSalaryDelta(age-(year-iyear),
+                                                            service=service,
+                                                            tier=tier),
+                     0));
         ages <- c(ages, testAge);
         services <- c(services, currentService);
         statuses <- c(statuses, currentStatus);
@@ -217,12 +224,17 @@ projectCareer <- function(year, age, service, salary, class="General",
                                          "retired", "deceased"))));
 }
 
-## Here's an object for a member, initialized for some specific
-## year.  The inputs are ages and years of service because that's what
-## is published in the pension report tables.
-member <- function(age=0, service=0, salary=0, class="General",
+## Here's an object for a member, initialized for some specific year.
+## The inputs are ages and years of service because that's what is
+## published in the pension report tables.  The mortClass arg
+## references the mortality tables (General, Safety, Teacher) and the
+## tier argument is a string that can be used in whatever way is
+## appropriate to reflect different classes of retirement benefits
+## amont plan members.
+member <- function(age=0, service=0, salary=0,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
+                   mortClass="General", tier="None",
                    status="active", verbose=FALSE) {
 
     if ((birthYear == 0) & (age != 0)) {
@@ -240,7 +252,7 @@ member <- function(age=0, service=0, salary=0, class="General",
     }
 
     ## Generate an entire career's worth of salary history.
-    salaryHistory <- projectCareer(currentYear, age, service, salary);
+    salaryHistory <- projectCareer(currentYear, age, service, salary, mortClass);
 
     ## Add the premiums paid into the system.
     salaryHistory <- projectPremiums(salaryHistory);
@@ -276,6 +288,8 @@ member <- function(age=0, service=0, salary=0, class="General",
                 hireYear=hireYear,
                 sepYear=sepYear,
                 retireYear=retireYear,
+                mortClass=mortClass,
+                tier=tier,
                 car=car,
                 salaryHistory=salaryHistory);
     attr(out, "class") <- "member";
@@ -289,7 +303,9 @@ format.member <- function(m, ...) {
                   ", deathYear: ", max(m$salaryHistory$year),
                   "\n     hireYear: ", m$hireYear,
                   ", sepYear: ", m$sepYear,
-                  ", retireYear: ", m$retireYear);
+                  ", retireYear: ", m$retireYear,
+                  "\n     mortality class: ", m$mortClass,
+                  ", tier: ", m$tier);
 
     ## The last row of the salary history is always zero, and not so
     ## interesting.
