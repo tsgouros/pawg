@@ -90,27 +90,27 @@ pubA <- pub2010amountMortalityRatesGeneral
 ## or amount weighted table.  The memberSalary is there for using the
 ## amount weighting, though it's not implemented yet (as of 4/21).
 doesMemberDie <- function(memberAge, memberSex, memberStatus,
-                          memberClass="General", memberSalary=0,
+                          mortClass="General", memberSalary=0,
                           weight="headcount", verbose=FALSE) {
 
-    if (verbose) cat("rolling dice for ", memberClass,
+    if (verbose) cat("rolling dice for ", mortClass,
                      ", aged ", memberAge, ", (",
                      memberStatus, ") ...", sep="");
 
     ## First, find the appropriate number from the mortality tables.
-    if (memberClass == "Safety") {
+    if (mortClass == "Safety") {
         if (memberSex == "female") {
             table <- pub2010headcountMortalityRatesSafetyFemale;
         } else {
             table <- pub2010headcountMortalityRatesSafetyMale;
         }
-    } else if (memberClass == "Teacher") {
+    } else if (mortClass == "Teacher") {
         if (memberSex == "female") {
             table <- pub2010headcountMortalityRatesTeacherFemale;
         } else {
             table <- pub2010headcountMortalityRatesTeacherMale;
         }
-    } else { ## This is for memberClass == "General" and anything else.
+    } else { ## This is for mortClass == "General" and anything else.
         if (memberSex == "female") {
             table <- pub2010headcountMortalityRatesGeneralFemale;
         } else {
