@@ -631,3 +631,104 @@ buildMasterCashFlow <- function(memberTbl, members, verbose=FALSE) {
     return(tibble(out));
 }
 
+
+## Given a function to construct a model population of plan members,
+## this function will run that model and compute the CAR for its members.
+runModelOnce <- function(modelConstructionFunction,
+                         verbose=FALSE) {
+
+    model <- modelConstructionFunction();
+
+    if (verbose) cat("model: Constructed a model with", length(model),
+                     "members.\n");
+
+    ## Make a summary table of all the members.
+    modelTbl <- makeTbl(model);
+
+    ## Build the master cash flow matrix.
+    modelMCF <- buildMasterCashFlow(modelTbl, model, verbose=verbose);
+
+    if (verbose) cat("model: Retirement classes:", dim(modelMCF)[2] - 2,
+                     "from", colnames(modelMCF)[2],
+                     "to", head(tail(colnames(modelMCF),2),1), "\n");
+
+    ## Compute the CAR for the overall results.
+    modelCAR <- findRate(modelMCF, flowName="sum", verbose=verbose);
+
+    if (verbose) cat("model: CAR estimate:", modelCAR, "\n");
+
+    ## Record the aggregate CAR under the year 1000 because why not.
+    modelOut <- tibble(ryear = c(1000),
+                       car = c(modelCAR - 1.0));
+
+    ## We are also interested in calculating the CAR for each
+    ## retirement class. Note that there are two extra columns in the
+    ## master cash flow matrix, for the year and for the row sums.  So
+    ## subtract two to get the number of retirement classes.
+    minRetireYear <- min(modelTbl$retireYear, na.rm=TRUE);
+    for (i in 1:(dim(modelMCF)[2] - 2)) {
+        newYear <- minRetireYear + i - 1;
+        newRate <- findRate(modelMCF, flowName=paste0("R", newYear));
+
+        ## If no error, record the rate for this retirement class.
+        if (newRate != 1.0) {
+            modelOut <- rbind(modelOut,
+                              tibble(ryear=c(newYear), car=c(newRate - 1.0)));
+        }
+    }
+
+    return(list(model=model,
+                modelTbl=modelTbl,
+                modelMCF=modelMCF,
+                modelOut=modelOut));
+}
+
+runModel <- function(modelConstructionFunction, N=1, verbose=FALSE) {
+    if (verbose) cat("Starting run on:", date(),"\n");
+
+    ## Prepare the output, just a record of years and CAR estimates.
+    modelOut <- tibble(ryear=c(), car=c());
+
+    for (i in 1:N) {
+        if (verbose) cat("  ", date(), ": model run number", i, "...");
+
+        M <- runModelOnce(modelConstructionFunction, verbose=verbose)
+
+        modelOut <- rbind(modelOut, M$modelOut);
+
+        if (verbose) cat("runModel: CAR =",
+                         as.numeric(M$modelOut %>%
+                                    filter(ryear == 1000) %>%
+                                    select(car)), "\n");
+    }
+
+    if (verbose) cat("Ending run on:", date(),"\n");
+
+    return(modelOut);
+}
+
+
+## Some useful output routines.
+library(ggplot2)
+
+plotModelOut <- function(modelOut) {
+
+    modelOutSummary <-
+        modelOut %>%
+        group_by(ryear) %>%
+        summarize(car=mean(car));
+
+    modelOutAvg <- modelOutSummary %>%
+        filter(ryear == 1000) %>% select(car) %>% as.numeric();
+
+    plotOut <- ggplot(modelOutSummary %>% filter(ryear > 1900)) +
+        geom_point(aes(x=ryear, y=car), color="blue") +
+        ylim(c(0,.1)) +
+        geom_hline(yintercept=modelOutAvg, color="red") +
+        labs(x="retirement class", y="CAR");
+
+    return(plotOut);
+}
+
+
+

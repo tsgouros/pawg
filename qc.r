@@ -40,15 +40,33 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
                        0.30, 0.30, 0.55, 0.55, 1.00);
 
             service <- min(service, 34);
+            ## Roll the dice.
             if (runif(1) < rates[service - 19]) status <- "retired";
     }
 
     return(status);
 }
 
+doesMemberBecomeDisabled <- function(age, sex, service, status,
+                                     mortClass="General", tier="None") {
+    ## If already retired or disabled, don't change anything and get out.
+    if ((status == "retired") | (status == "deceased") |
+        (status == "disabled") ) return(status);
+
+    ## These are rates for ages 20-25, 25-30, 30-35, etc
+    rates <- c(0.0003, 0.0003, 0.0004, 0.0009, 0.0017, 0.0017, 0.0043, 0.01);
+
+    ## Select the appropriate rate.
+    irate <- min(length(rates), ceiling((age - 20)/5));
+
+    ## Roll the dice.
+    if (runif(1) < rates[irate]) status <- "disabled";
+
+    return(status);
+}
+
 ## The assumed salary increment, from the table of merit increases in
-## each valuation report.  Class refers to any kind of subdivision
-## among the members.
+## each valuation report.
 projectSalaryDelta <- function(age, service=1, tier="None") {
 
     if (age < 25) {
@@ -101,7 +119,9 @@ projectPremiums <- function(salaryHistory) {
 
 
 ## Let's model the Queen Creek fire department.  This data is from the
-## valuation report, the member population table.
+## valuation report, the member population table.  This function
+## produces a list of members, and the function itself can be fed to
+## the runModel functions in car.r.
 qcModel <- function() {
     qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4),
                            avgSalary=71362);
@@ -144,73 +164,5 @@ qcModel <- function() {
     return(qcFire);
 }
 
-qcRunModel <- function(N=10) {
-
-    cat("Starting run on:", date(),"\n");
-
-    ## Prepare the output, just a record of years and CAR estimates.
-    modelOut <- tibble(ryear=c(), car=c());
-
-    for (i in 1:N) {
-
-        qcFire <- qcModel();
-
-        ## Make a summary table of all the members.
-        qcFireTbl <- makeTbl(qcFire);
-
-        ## Build the master cash flow matrix.
-        qcFireMCF <- buildMasterCashFlow(qcFireTbl, qcFire);
-
-        qcFireCAR <- findRate(qcFireMCF, flowName="sum");
-
-        ## We record the aggregate CAR under the year 1000.
-        modelOut <-
-            rbind(modelOut,
-                  tibble(ryear=c(1000), car=c(qcFireCAR - 1)));
-
-        rates <- c()
-        years <- c()
-        for (i in 1:(dim(qcFireMCF)[2] - 2)) {
-            newYear <- min(qcFireTbl$retireYear, na.rm=TRUE) + i - 1;
-            newRate <- findRate(qcFireMCF, flowName=paste0("R", newYear));
-            rates <- c(rates, -1 + newRate);
-            years <- c(years, newYear);
-
-            if (newRate != 1.0) {
-                ## If no error, record the rate for this retirement class.
-                modelOut <-
-                    rbind(modelOut,
-                          tibble(ryear=c(newYear), car=c(newRate - 1)));
-            }
-        }
-
-        qcFireCARs <- tibble(year=years, rate=rates);
-        rm(years, rates);
-
-    }
-    cat("Ending run on:", date(),"\n");
-
-    return(modelOut);
-}
-
-library(ggplot2)
-qcFireCARPlot <- ggplot(qcFireCARs) + geom_point(aes(x=year, y=rate))
-
-plotResult <- function(modelOut) {
-
-    modelOutSummary <-
-        modelOut %>%
-        group_by(ryear) %>%
-        summarize(car=mean(car));
-
-    modelOutAvg <- modelOutSummary %>%
-        filter(ryear == 1000) %>% select(car) %>% as.numeric();
-
-    plotOut <- ggplot(modelOutSummary %>% filter(ryear > 1900)) +
-        geom_point(aes(x=ryear, y=car), color="blue") +
-        ylim(c(0,.1)) +
-        geom_hline(yintercept=modelOutAvg, color="red") +
-        labs(x="retirement class", y="CAR");
-
-    return(plotOut);
-}
+qcModelOutput <- runModel(qcModel, verbose=TRUE);
+qcModelPlot <- plotModelOut(qcModelOutput)
