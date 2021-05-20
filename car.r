@@ -70,6 +70,7 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
                        0.30, 0.30, 0.55, 0.55, 1.00);
 
             service <- min(service, 34);
+            ## Roll the dice.
             if (runif(1) < rates[service - 19]) status <- "retired";
     }
 
@@ -89,6 +90,7 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
     ## among the options than a big if statement.
     irate <- min(length(rates), ceiling((age - 20)/5));
 
+    ## Roll the dice.
     if (runif(1) < rates[irate]) status <- "disabled";
 
     return(status);
@@ -214,7 +216,6 @@ simulateCareerBackward <- function(year, age, service, salary,
     }
 
     ## Reverse the data so the years are in forward order.
-    print(years);
     ord <- order(years);
 
     return(tibble(year =    years[ord],
@@ -355,27 +356,51 @@ projectCareerFromOneYear <- function(year, age, service, salary,
 ## appropriate to reflect different classes of retirement benefits and
 ## salaries among plan members.
 member <- function(age=0, service=0, salary=0,
+                   id="none", salaryHistory=NA,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
                    mortClass="General", tier="None",
                    status="active", verbose=FALSE) {
 
-    if ((birthYear == 0) & (age != 0)) {
+    ## Set up the facts of this member's life.
+    if (is.null(dim(salaryHistory))) {
+        ## If all we have is the single year's information, work with
+        ## that.
+
+        if ((birthYear == 0) & (age != 0)) {
+            birthYear <- currentYear - age;
+        } else {
+            age <- currentYear - birthYear ;
+        }
+        if (birthYear == currentYear)
+            stop("Must specify an age or a birth year.\n");
+
+        if (hireYear == 0) {
+            hireYear <- currentYear - service;
+        } else {
+            service <- currentYear - hireYear;
+        }
+
+        ## Generate an entire career's worth of salary history from
+        ## the single-year snapshot.
+        salaryHistory <- projectCareer(currentYear, age, service,
+                                       salary, mortClass);
+    } else {
+        ## If we're here, we already have some fraction of a member's
+        ## salary history to work with.
+        currentYear <- head(salaryHistory$year, 1);
+        age <- head(salaryHistory$age, 1);
+        service <- head(salaryHistory$service, 1);
+
         birthYear <- currentYear - age;
-    } else {
-        age <- currentYear - birthYear ;
-    }
-    if (birthYear == currentYear)
-        stop("Must specify an age or a birth year.\n");
-
-    if (hireYear == 0) {
         hireYear <- currentYear - service;
-    } else {
-        service <- currentYear - hireYear;
-    }
 
-    ## Generate an entire career's worth of salary history.
-    salaryHistory <- projectCareer(currentYear, age, service, salary, mortClass);
+        ## Generate the rest of a career's worth of salary history
+        ## from the history we've been given.
+        salaryHistory <- projectCareer(salaryHistory=salaryHistory,
+                                       mortClass=mortClass, tier=tier,
+                                       verbose=verbose);
+    }
 
     ## Add the premiums paid into the system.
     salaryHistory <- projectPremiums(salaryHistory);
@@ -404,9 +429,13 @@ member <- function(age=0, service=0, salary=0,
         car <- NA;
     }
 
-    ## Generate a random six-hex-digit id number, and return the rest
-    ## in a list.
-    out <- list(id=format(as.hexmode(round(runif(1) * 16777216)),width=6),
+    ## If no ID was provided, generate a random six-hex-digit id number.
+    if (id == "none") {
+        id <- format(as.hexmode(round(runif(1) * 16777216)),width=6);
+    }
+
+    ## Return everything in a list.
+    out <- list(id=id,
                 birthYear=birthYear,
                 hireYear=hireYear,
                 sepYear=sepYear,
