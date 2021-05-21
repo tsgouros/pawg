@@ -215,6 +215,10 @@ simulateCareerBackward <- function(year, age, service, salary,
         }
     }
 
+    ## That first year was probably not a complete year.  Roll some
+    ## dice and pick a random fraction of the year.
+    salaries[length(salaries)] <- runif(1) * salaries[length(salaries)];
+
     ## Reverse the data so the years are in forward order.
     ord <- order(years);
 
