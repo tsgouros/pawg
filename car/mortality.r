@@ -12,16 +12,16 @@ library(readxl)
 
 ## Pull from the "General" table.
 pub2010headcountMortalityRatesGeneralAge <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubG.H-2010", range="B6:B108",
                col_names=c("age"), col_types=c("numeric"))
 pub2010headcountMortalityRatesGeneralFemale <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubG.H-2010", range="D6:G108",
                col_names=c("active", "retired", "disabled", "survivor"),
                col_types="numeric")
 pub2010headcountMortalityRatesGeneralMale <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubG.H-2010", range="I6:L108",
                col_names=c("active", "retired", "disabled", "survivor"),
                col_types="numeric")
@@ -35,16 +35,16 @@ pub2010headcountMortalityRatesGeneralFemale <-
 
 ## Pull the "Safety" date.
 pub2010headcountMortalityRatesSafetyAge <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubS.H-2010", range="B6:B108",
                col_names=c("age"), col_types=c("numeric"))
 pub2010headcountMortalityRatesSafetyFemale <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubS.H-2010", range="D6:G108",
                col_names=c("active", "retired", "disabled", "survivor"),
                col_types="numeric")
 pub2010headcountMortalityRatesSafetyMale <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubS.H-2010", range="I6:L108",
                col_names=c("active", "retired", "disabled", "survivor"),
                col_types="numeric")
@@ -57,16 +57,16 @@ pub2010headcountMortalityRatesSafetyFemale <-
                  pub2010headcountMortalityRatesSafetyFemale));
 
 pub2010headcountMortalityRatesTeacherAge <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubT.H-2010", range="B6:B108",
                col_names=c("age"), col_types=c("numeric"))
 pub2010headcountMortalityRatesTeacherFemale <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubT.H-2010", range="D6:G108",
                col_names=c("active", "retired", "disabled", "survivor"),
                col_types="numeric")
 pub2010headcountMortalityRatesTeacherMale <-
-    read_excel("mortalityTables/pub-2010-headcount-mort-rates.xlsx",
+    read_excel("../mortalityTables/pub-2010-headcount-mort-rates.xlsx",
                sheet="PubT.H-2010", range="I6:L108",
                col_names=c("active", "retired", "disabled", "survivor"),
                col_types="numeric")
@@ -77,9 +77,6 @@ pub2010headcountMortalityRatesTeacherMale <-
 pub2010headcountMortalityRatesTeacherFemale <-
     tibble(cbind(pub2010headcountMortalityRatesTeacherAge,
                  pub2010headcountMortalityRatesTeacherFemale));
-
-pubH <- pub2010headcountMortalityRatesGeneral
-pubA <- pub2010amountMortalityRatesGeneral
 
 ## Given a member's age, sex, and status, rolls the dice to decide if
 ## they kick the bucket this year or survive to live another year.
