@@ -19,6 +19,8 @@ class pensMember(object):
         self.birthYear = currentYear - age
         self.retireYear = 0
         self.hireYear = currentYear - service
+        self.pension = 0
+        self.cola = 1.025
 
         self.salaryHistory = deque([ salary ])
         self.simulateCareerBackward()
@@ -64,7 +66,53 @@ class pensMember(object):
 
         return out
 
+    def applyPensionCOLA(self):
+        self.pension *= self.cola
 
+    def doesMemberSeparate(self):
+        """TBD: Does member leave employment?"""
+
+    def doesMemberRetire(self):
+        """TBD: What it sounds like"""
+
+    def doesMemberDie(self):
+        """TBD: Rolls the eternal dice."""
+
+    def ageOneYear(self):
+        """TBD: Age a year, get a raise, decide whether to separate or retire.
+        Maybe die.  Change status and salary accordingly."""
+        self.age += 1
+        self.currentYear += 1
+        self.salary *= self.projectSalaryDelta()
+
+        if self.doesMemberSeparate():
+            self.status = "separated"
+            self.salary = 0
+
+        if self.doesMemberRetire():
+            self.status = "retired"
+            self.retireYear = self.currentYear
+            self.salary = 0
+            self.pension = self.salaryHistory[-1] * 0.55
+
+        if self.doesMemberDie():
+            self.status = "deceased"
+            self.salary = 0
+
+    def calculateLiability(self, discountRate):
+        """TBD: Estimate accrued liability for this member."""
+
+        ## Step 1: If they aren't retired yet, estimate retirement
+        ## benefit earned and year of retirement, if any.
+
+        ## Step 2: Estimate how many years of retirement this person
+        ## is likely to enjoy. (Or how many years left, for members
+        ## who are already retired.)
+
+        ## Step 3: Apply the discount rate for each of the years to
+        ## get the present value in the current year.
+
+        ## Step 4: Add 'em up.
 
 class pensPop(object):
     def __init__(self, members=[]):
@@ -95,8 +143,9 @@ class pensPop(object):
         return(out)
 
     def simulatePopulation(self):
+        """Generates a collection of plan members.  This can be taken from
+        the table of population demographics in any valuation report."""
 
-        """Generates a collection of plan members."""
         self.members.extend(self.simulateMembers(1, ageRange=(20,24),
                                                  serviceRange=(0,4),
                                                  avgSalary=71362))
@@ -153,4 +202,30 @@ class pensPop(object):
                                                  avgSalary=124730))
 
 
+    def advanceOneYear(self):
+        """TBD: Advance the population by a year -- increase everyone's age
+        and service, give them raises, retire some people, others die,
+        or separate. """
 
+    def hireReplacements(self, pct=1.0):
+        """TBD: Replace retired and separated workers to maintain headcount.
+        If pct is less than one, only replace that proportion of the retired
+        and separated."""
+
+    def addNewMembers(self, N, ageRange, serviceRange, avgSalary,
+                      sex="*", mortalityClass="General", tier="1"):
+        """TBD: New hires who aren't replacements."""
+
+    def layoffMembers(self, N):
+        """TBD: Remove given number of members.  Favor removal of the
+        younger members."""
+
+    def calculateLiability(self, discountRate):
+        """Calculate the present value of the liability for all the
+        members."""
+
+        sum = 0
+        for (m in self.members):
+            sum += m.calculateLiability(discountRate)
+
+        return(sum)
