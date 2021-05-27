@@ -1,5 +1,6 @@
 from random import *
 from collections import deque
+import numpy as np
 
 class pensMember(object):
     def __init__(self, age, sex, service, salary, currentYear,
@@ -67,17 +68,89 @@ class pensMember(object):
 
 class pensPop(object):
     def __init__(self, members=[]):
+        ## A list of member objects.
         self.members = members
 
-    def simulatePopulation(self, N):
-        """Generates a collection of plan members."""
+    def simulateMembers(self, N, ageRange, serviceRange, avgSalary,
+                        sex="*", mortalityClass="General", tier="1"):
+        """Generates N member objects with randomly distributed ages and
+        services.  Sex is random, too, unless it's specified."""
+        out = []
         for i in range(0, N):
-            self.members.append(pensMember(randint(25,30),
-                                           "m",
-                                           randint(1,7),
-                                           randint(40000,50000),
-                                           2021))
+            if sex == "*":
+                if random() > 0.5:
+                    chosenSex = "M"
+                else:
+                    chosenSex = "F"
+            else:
+                chosenSex = sex
+            out.append(pensMember(randint(ageRange[0], ageRange[1]),
+                                  chosenSex,
+                                  randint(serviceRange[0], serviceRange[1]),
+                                  np.random.normal(avgSalary, avgSalary/15),
+                                  2021,
+                                  mortalityClass=mortalityClass,
+                                  tier=tier))
 
+        return(out)
+
+    def simulatePopulation(self):
+
+        """Generates a collection of plan members."""
+        self.members.extend(self.simulateMembers(1, ageRange=(20,24),
+                                                 serviceRange=(0,4),
+                                                 avgSalary=71362))
+        self.members.extend(self.simulateMembers(5, ageRange=(25,29),
+                                                 serviceRange=(0,4),
+                                                 avgSalary=73683))
+
+        self.members.extend(self.simulateMembers(1, ageRange=(25,29),
+                                                 serviceRange=(5,9),
+                                                 avgSalary=73683))
+
+        self.members.extend(self.simulateMembers(6, ageRange=(30,34),
+                                                 serviceRange=(0,4),
+                                                 avgSalary=80728))
+        self.members.extend(self.simulateMembers(1, ageRange=(30,34),
+                                                 serviceRange=(5,9),
+                                                 avgSalary=84728))
+
+        self.members.extend(self.simulateMembers(2, ageRange=(35,39),
+                                                 serviceRange=(0,4),
+                                                 avgSalary=84728))
+        self.members.extend(self.simulateMembers(1, ageRange=(35,39),
+                                                 serviceRange=(5,9),
+                                                 avgSalary=94728))
+        self.members.extend(self.simulateMembers(7, ageRange=(35,39),
+                                                 serviceRange=(10,14),
+                                                 avgSalary=115728))
+
+        self.members.extend(self.simulateMembers(2, ageRange=(40,44),
+                                                 serviceRange=(0,4),
+                                                 avgSalary=92728))
+        self.members.extend(self.simulateMembers(2, ageRange=(40,44),
+                                                 serviceRange=(5,9),
+                                                 avgSalary=94728))
+        self.members.extend(self.simulateMembers(10, ageRange=(40,44),
+                                                 serviceRange=(10,14),
+                                                 avgSalary=112728))
+
+        self.members.extend(self.simulateMembers(1, ageRange=(45,49),
+                                                 serviceRange=(5,9),
+                                                 avgSalary=94730))
+        self.members.extend(self.simulateMembers(4, ageRange=(45,49),
+                                                 serviceRange=(10,14),
+                                                 avgSalary=110730))
+        self.members.extend(self.simulateMembers(1, ageRange=(45,49),
+                                                 serviceRange=(15,19),
+                                                 avgSalary=140130))
+
+        self.members.extend(self.simulateMembers(2, ageRange=(45,49),
+                                                 serviceRange=(10,14),
+                                                 avgSalary=120730))
+        self.members.extend(self.simulateMembers(1, ageRange=(45,49),
+                                                 serviceRange=(15,19),
+                                                 avgSalary=124730))
 
 
 
