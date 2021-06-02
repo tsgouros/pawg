@@ -2,6 +2,39 @@ from random import *
 from collections import deque
 import numpy as np
 
+"""using openpyxl to access spreadsheets, creating dictionary of values. This may not be the optimal approach, let me know."""
+import openpyxl
+from pathlib import Path
+m_file = Path('..', 'mortalityTables', 'pub-2010-amount-mort-rates.xlsx')
+m_wb = openpyxl.load_workbook(m_file)
+pubG = m_wb['PubG-2010']
+mort_data_f = {}
+mort_data_m = {}
+""" read mortality rates into male and female dictionaries"""
+for i, row in enumerate(pubG.iter_rows(4, pubG.max_row)):
+    if i == 0:
+    
+        mort_data_f[row[3]] = []
+        mort_data_f[row[4]] = []
+        mort_data_f[row[5]] = []
+        mort_data_f[row[6]] = []
+        
+        mort_data_m[row[8]] = []
+        mort_data_m[row[9]] = []
+        mort_data_m[row[10]] = []
+        mort_data_m[row[11]] = []
+    else:
+        mort_data_f['Employee'].append(row[3])
+        mort_data_f['Healthy Retiree'].append(row[4])
+        mort_data_f['Disabled Retiree'].append(row[5])
+        mort_data_f['Contingent Survivor'].append(row[6])
+        
+        mort_data_m['Employee'].append(row[8])
+        mort_data_m['Healthy Retiree'].append(row[9])
+        mort_data_m['Disabled Retiree'].append(row[10])
+        mort_data_m['Contingent Survivor'].append(row[11])
+        
+
 class pensMember(object):
     def __init__(self, age, sex, service, salary, currentYear,
                  mortalityClass="General",
@@ -76,7 +109,25 @@ class pensMember(object):
         """TBD: What it sounds like"""
 
     def doesMemberDie(self):
-        """TBD: Rolls the eternal dice."""
+        if self.sex == "F":
+            table = mort_data_f
+        else: 
+            table = mort_data_m
+        
+        age = self.age - 18
+        rate = 0
+        
+        if self.status == "active":
+            rate = table['Employee'][age]
+        elif self.status == "retired"
+            rate = table['Healthy Retiree'][age]
+        elif self.status == "deceased":
+            rate = 1
+        """are there more statuses to account for?"""
+        
+        return random.randrange(100) < (rate*100)
+        
+        
 
     def ageOneYear(self):
         """TBD: Age a year, get a raise, decide whether to separate or retire.
