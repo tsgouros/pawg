@@ -1,6 +1,8 @@
 from random import *
 from collections import deque
 import numpy as np
+#!/usr/bin/enc python3
+
 
 """using openpyxl to access spreadsheets, creating dictionary of values. This may not be the optimal approach, let me know."""
 import openpyxl
@@ -149,6 +151,7 @@ class pensMember(object):
         if self.doesMemberDie():
             self.status = "deceased"
             self.salary = 0
+            
 
     def calculateLiability(self, discountRate):
         """TBD: Estimate accrued liability for this member."""
@@ -257,11 +260,20 @@ class pensPop(object):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
         or separate. """
+        
+        for member in self.members:
+            member.ageOneYear()
+        
+        #If we should remove dead members from the population.
+        #self.members = [x for x in self.members if (x.status == "deceased")]
+        
+        
 
     def hireReplacements(self, pct=1.0):
         """TBD: Replace retired and separated workers to maintain headcount.
         If pct is less than one, only replace that proportion of the retired
         and separated."""
+        
 
     def addNewMembers(self, N, ageRange, serviceRange, avgSalary,
                       sex="*", mortalityClass="General", tier="1"):
