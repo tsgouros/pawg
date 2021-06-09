@@ -2,8 +2,7 @@ from random import *
 from collections import deque
 import numpy as np
 
-
-"""using openpyxl to access spreadsheets, creating dictionary of values. This may not be the optimal approach, let me know."""
+"""using openpyxl to access spreadsheets, creating dictionary of values."""
 import openpyxl
 from pathlib import Path
 m_file = Path('..', 'mortalityTables', 'pub-2010-amount-mort-rates.xlsx')
@@ -37,10 +36,18 @@ for i, row in enumerate(pubG.iter_rows(4, pubG.max_row)):
         
 
 class pensMember(object):
-    def __init__(self, age, sex, service, salary, currentYear,
-                 mortalityClass="General",
-                 tier="1", status="active",
-                 id="*"):
+    def __init__(
+        self,
+        age,
+        sex,
+        service,
+        salary,
+        currentYear,
+        mortalityClass="General",
+        tier="1",
+        status="active",
+        id="*",
+    ):
         self.age = age
         self.sex = sex
         self.salary = salary
@@ -56,25 +63,27 @@ class pensMember(object):
         self.pension = 0
         self.cola = 1.025
 
-        self.salaryHistory = deque([ salary ])
+        self.salaryHistory = deque([salary])
         self.simulateCareerBackward()
 
         if self.id == "*":
-            self.id = "%0.6x" % randint(1,pow(16,6))
+            self.id = "%0.6x" % randint(1, pow(16, 6))
 
     def simulateCareerBackward(self):
         """Takes the current salary and service and projects a salary
         history backwards using the salaryGrowth value."""
 
         if self.service > 1:
-            for iyear in range(self.currentYear - 1,
-                               self.currentYear - self.service, -1):
-                self.salaryHistory.appendleft(self.salaryHistory[0]/self.projectSalaryDelta())
+            for iyear in range(
+                self.currentYear - 1, self.currentYear - self.service, -1
+            ):
+                self.salaryHistory.appendleft(
+                    self.salaryHistory[0] / self.projectSalaryDelta()
+                )
 
         ## That first year was probably not a complete year.  Roll
         ## some dice and pick a random fraction of the year.
         self.salaryHistory[0] = random() * self.salaryHistory[0]
-
 
     def projectSalaryDelta(self):
         """Uses the age, service, and tier to project the change in pay
@@ -105,9 +114,75 @@ class pensMember(object):
 
     def doesMemberSeparate(self):
         """TBD: Does member leave employment?"""
+        if self.status != "active":
+            return False
+        rates = [
+            0.070,
+            0.045,
+            0.037,
+            0.030,
+            0.025,
+            0.017,
+            0.017,
+            0.017,
+            0.017,
+            0.015,
+            0.011,
+            0.007,
+            0.007,
+            0.007,
+            0.006,
+            0.005,
+            0.005,
+            0.004,
+            0.004,
+            0.004,
+        ]
+
+        service = min(self.service, 20)
+        if random() < rates[service - 1]:
+            return True
+        else:
+            return False
 
     def doesMemberRetire(self):
         """TBD: What it sounds like"""
+        if (
+            self.status == "retired"
+            or self.status == "deceased"
+            or self.status == "disabled"
+        ):
+            return False
+
+        if self.age >= 62 and self.service >= 15:
+            if (
+                (self.age == 62 and random() > 0.4)
+                or (self.age > 62 and self.age < 70 and random() > 0.5)
+                or (self.age >= 70)
+            ):
+                return True
+            elif self.service >= 20:
+                rates = [
+                    0.14,
+                    0.14,
+                    0.07,
+                    0.07,
+                    0.07,
+                    0.22,
+                    0.26,
+                    0.19,
+                    0.32,
+                    0.30,
+                    0.30,
+                    0.30,
+                    0.55,
+                    0.55,
+                    1.00,
+                ]
+                service = min(self.service, 34)
+                if random() < rates[service - 20]:
+                    return True
+        return False
 
     def doesMemberDie(self):
         if self.sex == "F":
@@ -165,23 +240,41 @@ class pensMember(object):
 
         ## Step 1: If they aren't retired yet, estimate retirement
         ## benefit earned and year of retirement, if any.
+        ## year of retirement
+        if self.status == "active":
+            while self.status == "active":
+                self.ageOneYear()
 
         ## Step 2: Estimate how many years of retirement this person
         ## is likely to enjoy. (Or how many years left, for members
         ## who are already retired.)
+        counter = 0
+        if self.status == "retired":
+            while self.status != "deceased":
+                counter += 1
+                self.doesMemberDie()
 
         ## Step 3: Apply the discount rate for each of the years to
         ## get the present value in the current year.
 
         ## Step 4: Add 'em up.
 
+
 class pensPop(object):
     def __init__(self, members=[]):
         ## A list of member objects.
         self.members = members
 
-    def simulateMembers(self, N, ageRange, serviceRange, avgSalary,
-                        sex="*", mortalityClass="General", tier="1"):
+    def simulateMembers(
+        self,
+        N,
+        ageRange,
+        serviceRange,
+        avgSalary,
+        sex="*",
+        mortalityClass="General",
+        tier="1",
+    ):
         """Generates N member objects with randomly distributed ages and
         services.  Sex is random, too, unless it's specified."""
         out = []
@@ -193,75 +286,110 @@ class pensPop(object):
                     chosenSex = "F"
             else:
                 chosenSex = sex
-            out.append(pensMember(randint(ageRange[0], ageRange[1]),
-                                  chosenSex,
-                                  randint(serviceRange[0], serviceRange[1]),
-                                  np.random.normal(avgSalary, avgSalary/15),
-                                  2021,
-                                  mortalityClass=mortalityClass,
-                                  tier=tier))
+            out.append(
+                pensMember(
+                    randint(ageRange[0], ageRange[1]),
+                    chosenSex,
+                    randint(serviceRange[0], serviceRange[1]),
+                    np.random.normal(avgSalary, avgSalary / 15),
+                    2021,
+                    mortalityClass=mortalityClass,
+                    tier=tier,
+                )
+            )
 
-        return(out)
+        return out
 
     def simulatePopulation(self):
         """Generates a collection of plan members.  This can be taken from
         the table of population demographics in any valuation report."""
 
-        self.members.extend(self.simulateMembers(1, ageRange=(20,24),
-                                                 serviceRange=(0,4),
-                                                 avgSalary=71362))
-        self.members.extend(self.simulateMembers(5, ageRange=(25,29),
-                                                 serviceRange=(0,4),
-                                                 avgSalary=73683))
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(20, 24), serviceRange=(0, 4), avgSalary=71362
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                5, ageRange=(25, 29), serviceRange=(0, 4), avgSalary=73683
+            )
+        )
 
-        self.members.extend(self.simulateMembers(1, ageRange=(25,29),
-                                                 serviceRange=(5,9),
-                                                 avgSalary=73683))
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(25, 29), serviceRange=(5, 9), avgSalary=73683
+            )
+        )
 
-        self.members.extend(self.simulateMembers(6, ageRange=(30,34),
-                                                 serviceRange=(0,4),
-                                                 avgSalary=80728))
-        self.members.extend(self.simulateMembers(1, ageRange=(30,34),
-                                                 serviceRange=(5,9),
-                                                 avgSalary=84728))
+        self.members.extend(
+            self.simulateMembers(
+                6, ageRange=(30, 34), serviceRange=(0, 4), avgSalary=80728
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(30, 34), serviceRange=(5, 9), avgSalary=84728
+            )
+        )
 
-        self.members.extend(self.simulateMembers(2, ageRange=(35,39),
-                                                 serviceRange=(0,4),
-                                                 avgSalary=84728))
-        self.members.extend(self.simulateMembers(1, ageRange=(35,39),
-                                                 serviceRange=(5,9),
-                                                 avgSalary=94728))
-        self.members.extend(self.simulateMembers(7, ageRange=(35,39),
-                                                 serviceRange=(10,14),
-                                                 avgSalary=115728))
+        self.members.extend(
+            self.simulateMembers(
+                2, ageRange=(35, 39), serviceRange=(0, 4), avgSalary=84728
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(35, 39), serviceRange=(5, 9), avgSalary=94728
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                7, ageRange=(35, 39), serviceRange=(10, 14), avgSalary=115728
+            )
+        )
 
-        self.members.extend(self.simulateMembers(2, ageRange=(40,44),
-                                                 serviceRange=(0,4),
-                                                 avgSalary=92728))
-        self.members.extend(self.simulateMembers(2, ageRange=(40,44),
-                                                 serviceRange=(5,9),
-                                                 avgSalary=94728))
-        self.members.extend(self.simulateMembers(10, ageRange=(40,44),
-                                                 serviceRange=(10,14),
-                                                 avgSalary=112728))
+        self.members.extend(
+            self.simulateMembers(
+                2, ageRange=(40, 44), serviceRange=(0, 4), avgSalary=92728
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                2, ageRange=(40, 44), serviceRange=(5, 9), avgSalary=94728
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                10, ageRange=(40, 44), serviceRange=(10, 14), avgSalary=112728
+            )
+        )
 
-        self.members.extend(self.simulateMembers(1, ageRange=(45,49),
-                                                 serviceRange=(5,9),
-                                                 avgSalary=94730))
-        self.members.extend(self.simulateMembers(4, ageRange=(45,49),
-                                                 serviceRange=(10,14),
-                                                 avgSalary=110730))
-        self.members.extend(self.simulateMembers(1, ageRange=(45,49),
-                                                 serviceRange=(15,19),
-                                                 avgSalary=140130))
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(45, 49), serviceRange=(5, 9), avgSalary=94730
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                4, ageRange=(45, 49), serviceRange=(10, 14), avgSalary=110730
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(45, 49), serviceRange=(15, 19), avgSalary=140130
+            )
+        )
 
-        self.members.extend(self.simulateMembers(2, ageRange=(45,49),
-                                                 serviceRange=(10,14),
-                                                 avgSalary=120730))
-        self.members.extend(self.simulateMembers(1, ageRange=(45,49),
-                                                 serviceRange=(15,19),
-                                                 avgSalary=124730))
-
+        self.members.extend(
+            self.simulateMembers(
+                2, ageRange=(45, 49), serviceRange=(10, 14), avgSalary=120730
+            )
+        )
+        self.members.extend(
+            self.simulateMembers(
+                1, ageRange=(45, 49), serviceRange=(15, 19), avgSalary=124730
+            )
+        )
 
     def advanceOneYear(self):
         """TBD: Advance the population by a year -- increase everyone's age
@@ -281,8 +409,16 @@ class pensPop(object):
         
         
 
-    def addNewMembers(self, N, ageRange, serviceRange, avgSalary,
-                      sex="*", mortalityClass="General", tier="1"):
+    def addNewMembers(
+        self,
+        N,
+        ageRange,
+        serviceRange,
+        avgSalary,
+        sex="*",
+        mortalityClass="General",
+        tier="1",
+    ):
         """TBD: New hires who aren't replacements."""
 
     def layoffMembers(self, N):
@@ -294,7 +430,16 @@ class pensPop(object):
         members."""
 
         sum = 0
-        for (m in self.members):
+        for m in self.members:
             sum += m.calculateLiability(discountRate)
+        return sum
 
-        return(sum)
+
+print("hello")
+
+counter = 0
+for i in range(100000):
+    andy = pensMember(62, "M", 15, 1000, 2005)
+    if andy.doesMemberRetire():
+        counter += 1
+print(counter)
