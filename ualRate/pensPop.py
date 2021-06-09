@@ -141,18 +141,18 @@ class pensMember(object):
         if self.status != "deceased":
             self.age += 1
         if self.status == "active":
-            self.service += 1
-            self.salary *= self.projectSalaryDelta()
 
             if self.doesMemberSeparate():
                 self.status = "separated"
                 self.salary = 0
-
             elif self.doesMemberRetire():
                 self.status = "retired"
                 self.retireYear = self.currentYear
                 self.salary = 0
-                self.pension = self.salaryHistory[-1] * 0.55
+                self.pension = self.salaryHistory[-1] * 0.55 
+            else:
+                self.service += 1
+                self.salary *= self.projectSalaryDelta()
 
         if self.doesMemberDie():
             self.status = "deceased"
