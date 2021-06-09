@@ -26,5 +26,8 @@ def testAgeOneYear():
       elif self.currentYear != (2010+years):
         print("wrong year")
    
+  
+if __name__ == "__main__":
+  testAgeOneYear()
 
 
