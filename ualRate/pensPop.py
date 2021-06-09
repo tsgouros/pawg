@@ -133,20 +133,26 @@ class pensMember(object):
     def ageOneYear(self):
         """TBD: Age a year, get a raise, decide whether to separate or retire.
         Maybe die.  Change status and salary accordingly."""
-        self.age += 1
+        
+        #Should members' salary and service increase before or after separation/retire checks? 
+        #If a person retires, should their service and salary not increase for that year? Or would it increase for the year and then stop?
+        
         self.currentYear += 1
-        self.service += 1
-        self.salary *= self.projectSalaryDelta()
+        if self.status != "deceased":
+            self.age += 1
+        if self.status == "active":
+            self.service += 1
+            self.salary *= self.projectSalaryDelta()
 
-        if self.doesMemberSeparate():
-            self.status = "separated"
-            self.salary = 0
+            if self.doesMemberSeparate():
+                self.status = "separated"
+                self.salary = 0
 
-        if self.doesMemberRetire():
-            self.status = "retired"
-            self.retireYear = self.currentYear
-            self.salary = 0
-            self.pension = self.salaryHistory[-1] * 0.55
+            elif self.doesMemberRetire():
+                self.status = "retired"
+                self.retireYear = self.currentYear
+                self.salary = 0
+                self.pension = self.salaryHistory[-1] * 0.55
 
         if self.doesMemberDie():
             self.status = "deceased"
@@ -262,7 +268,6 @@ class pensPop(object):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
         or separate. """
-        
         for member in self.members:
             member.ageOneYear()
             
