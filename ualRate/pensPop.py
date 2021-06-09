@@ -1,6 +1,16 @@
+#!/usr/bin/env python3
 from random import *
 from collections import deque
 import numpy as np
+
+## TJ: Can we encapsulate the mortality tables into a class?  Read
+## all the data as you have it in the __init__() method, and give us
+## simple accessors that take a sex, age, and mortality class and
+## return a chance of dying.  Or better yet, just tuck all this into
+## the __init__() method of pensPop.
+##
+##
+
 
 """using openpyxl to access spreadsheets, creating dictionary of values."""
 import openpyxl
@@ -10,15 +20,17 @@ m_wb = openpyxl.load_workbook(m_file)
 pubG = m_wb['PubG-2010']
 mort_data_f = {}
 mort_data_m = {}
-""" read mortality rates into male and female dictionaries"""
+## TJ: The triple quotes thing is only for the doc strings right
+## after a function declaration. Use hash marks for in-code comments.
+##""" read mortality rates into male and female dictionaries"""
 for i, row in enumerate(pubG.iter_rows(4, pubG.max_row)):
     if i == 0:
-    
+
         mort_data_f[row[3]] = []
         mort_data_f[row[4]] = []
         mort_data_f[row[5]] = []
         mort_data_f[row[6]] = []
-        
+
         mort_data_m[row[8]] = []
         mort_data_m[row[9]] = []
         mort_data_m[row[10]] = []
@@ -28,12 +40,12 @@ for i, row in enumerate(pubG.iter_rows(4, pubG.max_row)):
         mort_data_f['Healthy Retiree'].append(row[4])
         mort_data_f['Disabled Retiree'].append(row[5])
         mort_data_f['Contingent Survivor'].append(row[6])
-        
+
         mort_data_m['Employee'].append(row[8])
         mort_data_m['Healthy Retiree'].append(row[9])
         mort_data_m['Disabled Retiree'].append(row[10])
         mort_data_m['Contingent Survivor'].append(row[11])
-        
+
 
 class pensMember(object):
     def __init__(
@@ -187,12 +199,12 @@ class pensMember(object):
     def doesMemberDie(self):
         if self.sex == "F":
             table = mort_data_f
-        else: 
+        else:
             table = mort_data_m
-        
+
         age = self.age - 18
         rate = 0
-        
+
         if self.status == "active":
             rate = table['Employee'][age]
         elif self.status == "retired"
@@ -200,18 +212,27 @@ class pensMember(object):
         elif self.status == "deceased":
             rate = 1
         """are there more statuses to account for?"""
-        
+        ## TJ: Yes, "separated" are people who have quit or been laid off,
+        ## but are still eligible for a pension.  They are equivalent
+        ## in mortality risk to "active".
+        ##
+        ## We are ignoring "disabled" for now.
+
         return random.randrange(100) < (rate*100)
-        
-        
+
+
 
     def ageOneYear(self):
         """TBD: Age a year, get a raise, decide whether to separate or retire.
         Maybe die.  Change status and salary accordingly."""
-        
-        #Should members' salary and service increase before or after separation/retire checks? 
+
+        #Should members' salary and service increase before or after separation/retire checks?
         #If a person retires, should their service and salary not increase for that year? Or would it increase for the year and then stop?
-        
+
+        ## ET: Check for a change of status, then adjust the salary if
+        ## it's still relevant.
+
+
         self.currentYear += 1
         if self.status != "deceased":
             self.age += 1
@@ -226,14 +247,14 @@ class pensMember(object):
                 self.retireYear = self.currentYear
                 self.salary = 0
                 self.pension = self.salaryHistory[-1] * 0.55
-                
+
 
         if self.doesMemberDie():
             self.status = "deceased"
             self.salary = 0
-            
-        
-            
+
+
+
 
     def calculateLiability(self, discountRate):
         """TBD: Estimate accrued liability for this member."""
@@ -397,17 +418,17 @@ class pensPop(object):
         or separate. """
         for member in self.members:
             member.ageOneYear()
-            
-         
-        
-        
+
+
+
+
 
     def hireReplacements(self, pct=1.0):
         """TBD: Replace retired and separated workers to maintain headcount.
         If pct is less than one, only replace that proportion of the retired
         and separated."""
-        
-        
+
+
 
     def addNewMembers(
         self,
@@ -435,11 +456,57 @@ class pensPop(object):
         return sum
 
 
-print("hello")
+##################### TESTING FUNCTIONS ######################
 
-counter = 0
-for i in range(100000):
-    andy = pensMember(62, "M", 15, 1000, 2005)
-    if andy.doesMemberRetire():
-        counter += 1
-print(counter)
+def testAgeOneYear():
+  m1 = pensMember(20, "M", 2, 500, 2010)
+  m2 = pensMember(30, "F", 2, 500, 2010)
+  m3 = pensMember(50, "M", 2, 500, 2010)
+
+  members = [m1,m2,m3]
+  ages = [20,30,50]
+
+  years = random.randint(5,15)
+
+  for i in range(years):
+    for m in members:
+      ogAge = m.age
+      ogStatus = m.status
+      ogService = m.service
+      m.ageOneYear()
+
+
+      if ogStatus == "deceased" and m.age != ogAge:
+        print("someone aged while dead")
+      if ogStatus != "active":
+        if m.service != ogService:
+          print("service increased for inactive member")
+        if m.salary != 0:
+          print("inactive member has a salary")
+
+
+  for m in members:
+    if m.status == "active":
+      if (m.age - years) not in ages:
+        print("someone's age is wrong")
+      elif m.service - years != 2:
+        print ("someone's service is wrong")
+      elif m.currentYear != (2010+years):
+        print("wrong year")
+
+
+
+if __name__ == "__main__":
+  testAgeOneYear()
+
+
+
+  print("hello")
+
+  counter = 0
+  for i in range(100000):
+      andy = pensMember(62, "M", 15, 1000, 2005)
+      if andy.doesMemberRetire():
+          counter += 1
+
+  print(counter)
