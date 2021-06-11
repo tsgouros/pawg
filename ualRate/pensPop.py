@@ -236,6 +236,7 @@ class pensMember(object):
         self.currentYear += 1
         if self.status != "deceased":
             self.age += 1
+
         if self.status == "active":
             self.service += 1
             self.salary *= self.projectSalaryDelta()
@@ -259,26 +260,36 @@ class pensMember(object):
     def calculateLiability(self, discountRate):
         """TBD: Estimate accrued liability for this member."""
 
-        ## Step 1: If they aren't retired yet, estimate retirement
-        ## benefit earned and year of retirement, if any.
-        ## year of retirement
+        ## Step 1: if person is active, estimate year of retirement
+
+        yearsUntilRetirement = 0
         if self.status == "active":
             while self.status == "active":
                 self.ageOneYear()
+                yearsUntilRetirement += 1
+
+            yearOfRetirement = self.currentYear
 
         ## Step 2: Estimate how many years of retirement this person
         ## is likely to enjoy. (Or how many years left, for members
         ## who are already retired.)
-        counter = 0
+
+        yearsOfRetirement = 0
         if self.status == "retired":
             while self.status != "deceased":
-                counter += 1
-                self.doesMemberDie()
+                yearsOfRetirement += 1
+                self.ageOneYear()
 
-        ## Step 3: Apply the discount rate for each of the years to
-        ## get the present value in the current year.
-
-        ## Step 4: Add 'em up.
+        liabilityPresentValue = 0
+        for i in range(yearsOfRetirement):
+            ## Step 3: estimate retirement benefit earned
+            liability = self.pension * self.cola ^ (i - 1)
+            
+            ## Step 4: Apply the discount rate for each of the years to
+            ## get the present value in the current year.
+            liabilityPresentValue = liabilityPresentValue + (liability) / (
+                self.discountrate ^ i
+            )
 
 
 class pensPop(object):
