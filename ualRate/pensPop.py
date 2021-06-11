@@ -30,6 +30,7 @@ class pensMember(object):
         self.hireYear = currentYear - service
         self.pension = 0
         self.cola = 1.025
+        self.discountrate = 1.07
 
         self.salaryHistory = deque([salary])
         self.simulateCareerBackward()
@@ -196,16 +197,15 @@ class pensMember(object):
                 yearsOfRetirement += 1
                 self.ageOneYear()
 
-        ## Step 3: estimate retirement benefit earned
-        liability = 0
+        liabilityPresentValue = 0
         for i in range(yearsOfRetirement):
-            liability = liability + self.pension * 1.02 ^ (i - 1)
-
-        ## Step 4: Apply the discount rate for each of the years to
-        ## get the present value in the current year.
-        liabilityPresentValue = liability / (
-            1.07 ^ (yearsUntilRetirement + yearsOfRetirement)
-        )
+            ## Step 3: estimate retirement benefit earned
+            liability = self.pension * self.cola ^ (i - 1)
+            ## Step 4: Apply the discount rate for each of the years to
+            ## get the present value in the current year.
+            liabilityPresentValue = liabilityPresentValue + (liability) / (
+                self.discountrate ^ i
+            )
 
 
 class pensPop(object):
@@ -374,3 +374,26 @@ class pensPop(object):
             sum += m.calculateLiability(discountRate)
         return sum
 
+
+##########################################testing##############################################################
+def testdoesMemberRetire():
+    counter = 0
+    for i in range(100000):
+        andy = pensMember(62, "M", 15, 1000, 2005)
+        if andy.doesMemberRetire():
+            counter += 1
+    print(counter)
+
+
+def testdoesMemberSeparate():
+    counter = 0
+    for i in range(100000):
+        andy = pensMember(62, "M", 15, 1000, 2005)
+        if andy.doesMemberSeparate():
+            counter += 1
+    print(counter)
+
+
+if __name__ == "__main__":
+    testdoesMemberRetire()
+    testdoesMemberSeparate()
