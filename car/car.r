@@ -197,6 +197,7 @@ simulateCareerBackward <- function(year, age, service, salary,
     ages <- c(age);
     services <- c(service);
     statuses <- c("active");
+    fromData <- c(FALSE);
     years <- c(year);
 
     ## March backward to the year of initial hire.
@@ -212,6 +213,7 @@ simulateCareerBackward <- function(year, age, service, salary,
                                                        tier=tier));
             statuses <- c(statuses, "active");
             years <- c(years, iyear);
+            fromData <- c(fromData, FALSE);
         }
     }
 
@@ -226,6 +228,7 @@ simulateCareerBackward <- function(year, age, service, salary,
                   age =     ages[ord],
                   service = services[ord],
                   salary =  salaries[ord],
+                  fromData    =  fromData[ord],
                   status =  statuses[ord]));
 }
 
@@ -236,6 +239,7 @@ simulateCareerForward <- function(year, age, service, salary, status,
     ages <- c(age);
     services <- c(service);
     statuses <- c(as.character(status));
+    fromData <- c(TRUE);  ## The first year is from data, the rest are sims.
     years <- c(year);
 
     ## Now march forward through a simulated career.  Stop when you
@@ -272,6 +276,7 @@ simulateCareerForward <- function(year, age, service, salary, status,
         services <- c(services, currentService);
         statuses <- c(statuses, currentStatus);
         years <- c(years, iyear);
+        fromData <- c(fromData, FALSE);
 
         if (currentStatus == "deceased") break;
 
@@ -287,6 +292,7 @@ simulateCareerForward <- function(year, age, service, salary, status,
                   salary=salaries,
                   age=ages,
                   service=services,
+                  fromData=fromData,
                   status=statuses));
 }
 
@@ -323,10 +329,16 @@ projectCareerFromRecord <- function(salaryHistory, mortClass, tier,
                   salary=c(head(backward$salary, -1),
                            salaryHistory$salary,
                            tail(forward$salary, -1)),
+                  fromData=c(head(backward$fromData, -1),
+                             rep(TRUE, length(salaryHistory$salary)),
+                             tail(forward$fromData, -1)),
+                  premium = c(rep(0, length(backward$salary) - 1),
+                              salaryHistory$premium,
+                              rep(0, length(forward$salary) - 1)),
                   status=factor(c(head(backward$status, -1),
                                   as.character(salaryHistory$status),
-                                  tail(forward$status, -1)),
-                                levels=levels(salaryHistory$status))));
+                                  tail(forward$status, -1)))));
+#                                levels=levels(salaryHistory$status))));
 }
 
 
@@ -347,6 +359,10 @@ projectCareerFromOneYear <- function(year, age, service, salary,
                   age=c(head(backward$age, -1), forward$age),
                   service=c(head(backward$service, -1), forward$service),
                   salary=c(head(backward$salary, -1), forward$salary),
+                  fromData=c(head(backward$fromData, -1),
+                             forward$fromData),
+                  premium=rep(0, length(backward$salary) +
+                                 length(forward$salary) - 1),
                   status=factor(c(head(backward$status, -1), forward$status),
                                 levels=c("active", "separated",
                                          "retired", "deceased"))));
@@ -364,7 +380,7 @@ member <- function(age=0, service=0, salary=0,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
                    mortClass="General", tier="None",
-                   status="active", verbose=FALSE) {
+                   status="active", note="", verbose=FALSE) {
 
     ## Set up the facts of this member's life.
     if (is.null(dim(salaryHistory))) {
@@ -447,6 +463,7 @@ member <- function(age=0, service=0, salary=0,
                 mortClass=mortClass,
                 tier=tier,
                 car=car,
+                note=note,
                 salaryHistory=salaryHistory);
     attr(out, "class") <- "member";
 
@@ -488,6 +505,10 @@ format.member <- function(m, ...) {
                   format(retirement$startPension[1], digits=5, big.mark=","), ") ",
                   " -> (", retirement$endYear[1], ", ",
                   format(retirement$endPension[1], digits=5, big.mark=","), ")");
+    }
+
+    if (m$note != "") {
+        out <- paste0(out, "\n", "     note: ", m$note);
     }
 
     out <- paste0(out, "\n",

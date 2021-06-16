@@ -136,6 +136,10 @@ doesMemberDie <- function(memberAge, memberSex, memberStatus,
                             filter(age == memberAge) %>%
                             select(contains(tempStatus)));
 
+    if (length(threshold) < 1)
+        cat("error establishing threshold, age=", memberAge,
+            "status=", tempStatus, "\n");
+
     ## Roll the dice.
     outStatus <- memberStatus;
     if (runif(1) < threshold) outStatus <- "deceased";
