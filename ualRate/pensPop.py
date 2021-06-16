@@ -237,6 +237,7 @@ class pensMember(object):
         self.currentYear += 1
         if self.status != "deceased":
             self.age += 1
+
         if self.status == "active":
             self.service += 1
             self.salary *= self.projectSalaryDelta()
@@ -261,16 +262,19 @@ class pensMember(object):
         """TBD: Estimate accrued liability for this member."""
 
         ## Step 1: if person is active, estimate year of retirement
+
         yearsUntilRetirement = 0
         if self.status == "active":
             while self.status == "active":
                 self.ageOneYear()
                 yearsUntilRetirement += 1
+
             yearOfRetirement = self.currentYear
 
         ## Step 2: Estimate how many years of retirement this person
         ## is likely to enjoy. (Or how many years left, for members
         ## who are already retired.)
+
         yearsOfRetirement = 0
         if self.status == "retired":
             while self.status != "deceased":
@@ -281,6 +285,7 @@ class pensMember(object):
         for i in range(yearsOfRetirement):
             ## Step 3: estimate retirement benefit earned
             liability = self.pension * self.cola ^ (i - 1)
+
             ## Step 4: Apply the discount rate for each of the years to
             ## get the present value in the current year.
             liabilityPresentValue = liabilityPresentValue + (liability) / (
@@ -464,6 +469,29 @@ class pensPop(object):
 
 
 ##################### TESTING FUNCTIONS ######################
+def testdoesMemberRetire():
+    counter = 0
+    for i in range(100000):
+        andy = pensMember(62, "M", 15, 1000, 2005)
+        if andy.doesMemberRetire():
+            counter += 1
+    print(counter)
+
+
+def testdoesMemberSeparate():
+    counter = 0
+    for i in range(100000):
+        andy = pensMember(62, "M", 15, 1000, 2005)
+        if andy.doesMemberSeparate():
+            counter += 1
+    print(counter)
+
+
+if __name__ == "__main__":
+    testdoesMemberRetire()
+    testdoesMemberSeparate()
+
+
 
 def testAgeOneYear():
   m1 = pensMember(20, "M", 2, 500, 2010)
