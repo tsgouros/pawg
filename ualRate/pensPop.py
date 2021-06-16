@@ -221,6 +221,7 @@ class pensMember(object):
         return random.randrange(100) < (rate*100)
 
 
+YearSalaryDict = {}
 
     def ageOneYear(self):
         """TBD: Age a year, get a raise, decide whether to separate or retire.
@@ -240,21 +241,19 @@ class pensMember(object):
         if self.status == "active":
             self.service += 1
             self.salary *= self.projectSalaryDelta()
+            YearSalaryDict[self.currentYear] = self.salary
             if self.doesMemberSeparate():
                 self.status = "separated"
+                self.pension = YearSalarayDict[self.currentYear] * 0.55
                 self.salary = 0
             elif self.doesMemberRetire():
                 self.status = "retired"
                 self.retireYear = self.currentYear
+                self.pension = YearSalarayDict[self.currentYear] * 0.55
                 self.salary = 0
-                self.pension = self.salaryHistory[-1] * 0.55
-
-
-        if self.doesMemberDie():
-            self.status = "deceased"
-            self.salary = 0
-
-
+            if self.doesMemberDie():
+                self.status = "deceased"
+                self.salary = 0
 
 
     def calculateLiability(self, discountRate):
@@ -281,7 +280,7 @@ class pensMember(object):
                 self.ageOneYear()
 
         liabilityPresentValue = 0
-        for i in range(yearsOfRetirement):
+        for i in range(yearsUntilRetirement + yearsOfRetirement):
             ## Step 3: estimate retirement benefit earned
             liability = self.pension * self.cola ^ (i - 1)
 
