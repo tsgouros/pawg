@@ -34,17 +34,20 @@ class pensMort(object):
                 self.data_m['Contingent Survivor'].append(row[11])
 				
     def getRate(sex, age, status):
+        age -= 18
         if sex == "F":
             table = self.data_f
         else:
             table = self.data_m
 		
-        if status == "active":
+        if status == "active" or status == "separated":
             rate = table['Employee'][age]
         elif status == "retired":
             rate = table['Healthy Retiree'][age]
         elif status == "deceased":
-            rate = 1
+            rate = 1  
+        else:
+            rate = 0
 			
         return rate
 
