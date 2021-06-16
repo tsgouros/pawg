@@ -113,7 +113,7 @@ projectPension <- function(salaryHistory) {
 ## (Combined employer and employee share.)
 projectPremiums <- function(salaryHistory) {
     return(salaryHistory %>%
-           mutate(premium = salary * .2265))
+           mutate(premium = ifelse(premium==0, salary * .2265, premium)))
 }
 
 
