@@ -79,12 +79,15 @@ genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
 
         m <- member(salaryHistory=memberSalaryHistory,
                     currentYear=2021,
-                    birthYear = memberScalarData %>% select(birthYear),
-                    hireYear = memberScalarData %>% select(hireYear),
-                    tier = memberScalarData %>% select(tier),
+                    birthYear = memberScalarData %>%
+                        select(birthYear) %>% as.numeric(),
+                    hireYear = memberScalarData %>%
+                        select(hireYear) %>% as.numeric(),
+                    tier = memberScalarData %>%
+                        select(tier) %>% as.numeric(),
                     mortClass="Safety",
                     note=uname,
-                    ## sex="M",
+                    sex="M",
                     status = memberStatus,
                     verbose=verbose)
 
@@ -96,4 +99,9 @@ genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
     return(members);
 }
 
-qcFireFromData <- genEmployeesFromData(qcMemberData, verbose=TRUE)
+qcFireFromData <- genEmployeesFromData(qcMemberData, verbose=FALSE)
+
+qcModelOutputFromData <-
+    runModel(function() { genEmployeesFromData(qcMemberData) },
+             verbose=FALSE, N=1);
+qcModelPlotFromData <- plotModelOut(qcModelOutputFromData)

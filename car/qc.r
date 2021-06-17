@@ -9,7 +9,7 @@ source("car.r")
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
-doesMemberSeparate <- function(age, service, status, class="NONE") {
+doesMemberSeparate <- function(age, service, status, tier=1) {
     ## If this is not currently an active employee, get out.
     if (status != "active") return(status);
 
@@ -24,17 +24,19 @@ doesMemberSeparate <- function(age, service, status, class="NONE") {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, class="NONE") {
+doesMemberRetire <- function(age, service, status, tier=1) {
     ## If already retired, get out.
     if ((status == "retired") | (status == "deceased")) return(status);
 
-    if ((age >= 62) & (service >= 15)) {
-        if ( ((age == 62) & (runif(1) > 0.4)) |
-             (((age > 62) & (age < 70)) & (runif(1) > 0.5)) |
-             (age >= 70) ) {
-            status <- "retired";
-        }
-    } else if (service >= 20) {
+    if (tier == 1) {
+
+        if ((age >= 62) & (service <= 20)) {
+            if ( ((age == 62) & (runif(1) > 0.4)) |
+                 (((age > 62) & (age < 70)) & (runif(1) > 0.5)) |
+                 (age >= 70) ) {
+                status <- "retired";
+            }
+        } else if (service >= 20) {
             rates <- c(0.14, 0.14, 0.07, 0.07, 0.07,
                        0.22, 0.26, 0.19, 0.32, 0.30,
                        0.30, 0.30, 0.55, 0.55, 1.00);
@@ -42,13 +44,35 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
             service <- min(service, 34);
             ## Roll the dice.
             if (runif(1) < rates[service - 19]) status <- "retired";
+        }
+    } else if (tier == 2) {
+        if ((age >= 53) & (service >= 15)) {
+            rates <- c(0.22, 0.26, 0.19, 0.32, 0.30,
+                       0.30, 0.30, 0.55, 0.55, 0.55,
+                       0.55, 1.00);
+            if (runif(1) < rates[age - 52]) status <- "retired";
+        }
+    } else if (tier == 3) {
+        if ((age >= 55) & (service >= 15)) {
+            rates <- c(0.19, 0.32, 0.30, 0.30, 0.30,
+                       0.55, 0.55, 0.55, 0.55, 1.00);
+            if (runif(1) < rates[age - 54]) status <- "retired";
+        }
+    } else if (tier == 0) {
+        ## There are "tier 0" people in QC Fire.  They are already
+        ## retired, and receiving a pension.  There are employer
+        ## contributions happening on their behalf, but they are otherwise
+        ## irrelevant to the investigation of the CAR.  We age them and
+        ## retire them, and will try to avoid counting them later.
+        if (age > 65) status <- "retired";
     }
+
 
     return(status);
 }
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
-                                     mortClass="General", tier="None") {
+                                     mortClass="General", tier=1) {
     ## If already retired or disabled, don't change anything and get out.
     if ((status == "retired") | (status == "deceased") |
         (status == "disabled") ) return(status);
@@ -67,7 +91,7 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
 
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.
-projectSalaryDelta <- function(age, service=1, tier="None") {
+projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
 
     if (age < 25) {
         out <- 1.075;
@@ -85,13 +109,104 @@ projectSalaryDelta <- function(age, service=1, tier="None") {
         out <- 1.035;
     }
 
+    ## Tier 3 salaries are limited.  ??
+##    if (tier == 3) {
+##        iyear <- max(year, 2020);
+##        limit <- 110000 * 1.02^(year - 2020);
+##        out <- min(out, (out - limit) / limit);
+##    }
+
     return(out);
 }
 
-projectPension <- function(salaryHistory) {
+projectPension <- function(salaryHistory, tier=1) {
 
-    startingPension <- max(salaryHistory$salary) * 0.605;
-    cola <- 1.02;
+    service <- sum(salaryHistory$salary > 0);
+
+    ## Calculate the base salary from which to calculate the pension.
+    if (tier == 1) {
+        # Find the maximum 3-year period.
+        s <- tail(salaryHistory$salary[salaryHistory$salary > 0], 20);
+        threeYears <- c(s, 0, 0) + c(0, s, 0) + c(0, 0, s);
+        avgSalary <- max(threeYears) / 3.0;
+
+        startingPension <- 0.5 * avgSalary;
+
+        if ((service >= 15) & (service < 20)) {
+            startingPension <- startingPension * (1 - ((20 - service) * 0.04));
+        } else if (service >= 25) {
+            startingPension <- startingPension * (1 + ((service - 20) * 0.025));
+        } else { ## 20-25
+            startingPension <- startingPension * (1 + ((service - 20) * 0.02));
+        }
+
+        startingPension <- min(0.8 * avgSalary, startingPension);
+    } else if (tier == 2) {
+        # Find the maximum 5-year period.
+        s <- tail(salaryHistory$salary[salaryHistory$salary > 0], 20);
+
+        fiveYears <-
+            c(s, 0, 0, 0, 0) +
+            c(0, s, 0, 0, 0) +
+            c(0, 0, s, 0, 0) +
+            c(0, 0, 0, s, 0) +
+            c(0, 0, 0, 0, s);
+        avgSalary <- max(fiveYears) / 5.0;
+
+        if ((service >= 15) & (service < 17)) {
+            benefitMultiplier <- 0.015;
+        } else if ((service >= 17) & (service < 19)) {
+            benefitMultiplier <- 0.0175;
+        } else if ((service >= 19) & (service < 22)) {
+            benefitMultiplier <- 0.02;
+        } else if ((service >= 22) & (service < 25)) {
+            benefitMultiplier <- 0.0225;
+        } else if (service >= 25) {
+            benefitMultiplier <- 0.025;
+        } else { print(salaryHistory); cat("tier:", tier, "service:", service, "\n");}
+
+        startingPension <- avgSalary * (service * benefitMultiplier);
+
+        startingPension <- min(0.8 * avgSalary, startingPension);
+    } else if (tier == 3) {
+        # Find the maximum 5-year period.
+        s <- tail(salaryHistory %>%
+                  mutate(X=pmin(salary, 110000 * (1.02^(pmax(0, year-2020))))) %>%
+                  filter(X > 0) %>%
+                  select(X) %>%
+                  unlist(use.names=FALSE), 15);
+
+        cat(">>>>>>\n");
+        print(s);
+
+        fiveYears <-
+            c(s, 0, 0, 0, 0) +
+            c(0, s, 0, 0, 0) +
+            c(0, 0, s, 0, 0) +
+            c(0, 0, 0, s, 0) +
+            c(0, 0, 0, 0, s);
+        avgSalary <- max(fiveYears) / 5.0;
+
+        if ((service >= 15) & (service < 17)) {
+            benefitMultiplier <- 0.015;
+        } else if ((service >= 17) & (service < 19)) {
+            benefitMultiplier <- 0.0175;
+        } else if ((service >= 19) & (service < 22)) {
+            benefitMultiplier <- 0.02;
+        } else if ((service >= 22) & (service < 25)) {
+            benefitMultiplier <- 0.0225;
+        } else if (service >= 25) {
+            benefitMultiplier <- 0.025;
+        } else { print(salaryHistory); cat("tier:", tier, "service:", service, "\n");}
+
+        startingPension <- avgSalary * (service * benefitMultiplier);
+
+        startingPension <- min(0.8 * avgSalary, startingPension);
+    } else if (tier == 0) {
+        startingPension <- 0.0;
+    }
+
+    cola <- 1.0175;
 
     ## If this person never retired, send them away without a pension.
     if (!("retired" %in% salaryHistory$status))
@@ -164,5 +279,5 @@ qcModel <- function() {
     return(qcFire);
 }
 
-qcModelOutput <- runModel(qcModel, verbose=TRUE);
-qcModelPlot <- plotModelOut(qcModelOutput)
+#qcModelOutput <- runModel(qcModel, N=1, verbose=TRUE);
+#qcModelPlot <- plotModelOut(qcModelOutput)

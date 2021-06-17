@@ -38,7 +38,7 @@ source("mortality.r")
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
-doesMemberSeparate <- function(age, service, status, class="NONE") {
+doesMemberSeparate <- function(age, service, status, tier=1) {
     ## If this is not currently an active employee, get out.
     if (status != "active") return(status);
 
@@ -53,7 +53,7 @@ doesMemberSeparate <- function(age, service, status, class="NONE") {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, class="NONE") {
+doesMemberRetire <- function(age, service, status, tier=1) {
     ## If already retired, get out.
     if ((status == "retired") | (status == "deceased") |
         (status == "disabled") ) return(status);
@@ -78,7 +78,7 @@ doesMemberRetire <- function(age, service, status, class="NONE") {
 }
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
-                                     mortClass="General", tier="None") {
+                                     mortClass="General", tier=1) {
     ## If already retired or disabled, don't change anything and get out.
     if ((status == "retired") | (status == "deceased") |
         (status == "disabled") ) return(status);
@@ -104,7 +104,7 @@ source("mortality.r")
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.  Tier refers to any kind of subdivision
 ## among the members.
-projectSalaryDelta <- function(age, service=1, tier="None") {
+projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
 
     if (age < 25) {
         out <- 1.075;
@@ -125,7 +125,7 @@ projectSalaryDelta <- function(age, service=1, tier="None") {
     return(out);
 }
 
-projectPension <- function(salaryHistory) {
+projectPension <- function(salaryHistory, tier=1) {
 
     startingPension <- max(salaryHistory$salary) * 0.55;
     cola <- 1.02;
@@ -167,7 +167,7 @@ projectPremiums <- function(salaryHistory) {
 ## mortality tables to fill out the career of this person.
 projectCareer <- function(year=0, age=0, service=0, salary=0,
                           salaryHistory=NA,
-                          mortClass="General", tier="None",
+                          mortClass="General", tier=1,
                           verbose=FALSE) {
 
     ## Test if the salaryHistory data frame is empty.
@@ -208,7 +208,9 @@ simulateCareerBackward <- function(year, age, service, salary,
             services <- c(services, service - (year - iyear));
             salaries <-
                 c(salaries,
-                  tail(salaries, 1)/projectSalaryDelta(age - (year - iyear),
+                  tail(salaries, 1)/projectSalaryDelta(iyear,
+                                                       age - (year - iyear),
+                                                       salary,
                                                        service=service,
                                                        tier=tier));
             statuses <- c(statuses, "active");
@@ -242,6 +244,11 @@ simulateCareerForward <- function(year, age, service, salary, status,
     fromData <- c(TRUE);  ## The first year is from data, the rest are sims.
     years <- c(year);
 
+    if (verbose) cat("\nIn", year, "--simulating career forward for--\n",
+                     "age:", age, "service:", service, "salary:", salary,
+                     "status:", status, "mortClass:", mortClass, "tier:", tier,
+                     "\n");
+
     ## Now march forward through a simulated career.  Stop when you
     ## hit "deceased."
     currentStatus <- status;
@@ -261,14 +268,16 @@ simulateCareerForward <- function(year, age, service, salary, status,
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
         currentStatus <-
-            doesMemberRetire(testAge, currentService, currentStatus);
+            doesMemberRetire(testAge, currentService, currentStatus, tier);
 
         if (verbose) cat (", end ", currentStatus, ".\n", sep="");
 
         salaries <-
             c(salaries,
               ifelse(currentStatus == "active",
-                     tail(salaries, 1) * projectSalaryDelta(age-(year-iyear),
+                     tail(salaries, 1) * projectSalaryDelta(iyear,
+                                                            age-(year-iyear),
+                                                            salary,
                                                             service=service,
                                                             tier=tier),
                      0));
@@ -379,7 +388,7 @@ member <- function(age=0, service=0, salary=0,
                    id="none", salaryHistory=NA,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
-                   mortClass="General", tier="None",
+                   sex="M", mortClass="General", tier=1,
                    status="active", note="", verbose=FALSE) {
 
     ## Set up the facts of this member's life.
@@ -427,7 +436,7 @@ member <- function(age=0, service=0, salary=0,
 
     ## If this member gets to retire, estimate pension.
     if ("retired" %in% salaryHistory$status) {
-        salaryHistory <- projectPension(salaryHistory);
+        salaryHistory <- projectPension(salaryHistory, tier);
         retireYear <- as.numeric(salaryHistory %>%
             filter(status=="retired") %>% summarize(retireYear=min(year)));
     } else {
@@ -460,6 +469,7 @@ member <- function(age=0, service=0, salary=0,
                 hireYear=hireYear,
                 sepYear=sepYear,
                 retireYear=retireYear,
+                sex=sex,
                 mortClass=mortClass,
                 tier=tier,
                 car=car,
@@ -474,6 +484,7 @@ member <- function(age=0, service=0, salary=0,
 format.member <- function(m, ...) {
     out <- paste0("birthYear: ", m$birthYear,
                   ", deathYear: ", max(m$salaryHistory$year),
+                  " sex: ", m$sex,
                   "\n     hireYear: ", m$hireYear,
                   ", sepYear: ", m$sepYear,
                   ", retireYear: ", m$retireYear,
