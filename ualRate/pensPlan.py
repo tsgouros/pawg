@@ -16,7 +16,7 @@ class pensPlan(object):
                                         serviceRange=(1,30))
         self.liability = self.population.calculateLiability(self.discountRate)
         ## Start off 3/4 funded.
-        self.fund = pensFund(0.75 * self.liability)
+        self.fund = pensFund(0.75 * self.liability, self.currentYear)
         ## I think we could make the assets into a class that looks like:
         ## pensFund.__init__(assetTotal,
         ##                   pctEquity=0.6,
