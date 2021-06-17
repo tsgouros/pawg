@@ -190,8 +190,9 @@ projectCareer <- function(year=0, age=0, service=0, salary=0,
 ## assumptions to work backward to the year of hire.  We assume you
 ## are starting from an active year.
 simulateCareerBackward <- function(year, age, service, salary,
-                                   status="active",
-                                   tier, verbose=FALSE) {
+                                   sex="M", status="active",
+                                   mortClass="General",
+                                   tier=1, verbose=FALSE) {
 
     salaries <- c(salary);
     ages <- c(age);
@@ -223,8 +224,9 @@ simulateCareerBackward <- function(year, age, service, salary,
     ## dice and pick a random fraction of the year.
     salaries[length(salaries)] <- runif(1) * salaries[length(salaries)];
 
-    ## Reverse the data so the years are in forward order.
-    ord <- order(years);
+    ## Reverse the data so the years are in forward order.  Leave off
+    ## the last one because that's just the original (input) year.
+    ord <- head(order(years), -1);
 
     return(tibble(year =    years[ord],
                   age =     ages[ord],
@@ -234,8 +236,10 @@ simulateCareerBackward <- function(year, age, service, salary,
                   status =  statuses[ord]));
 }
 
-simulateCareerForward <- function(year, age, service, salary, status,
-                                  mortClass, tier, verbose=FALSE) {
+simulateCareerForward <- function(year, age, service, salary,
+                                  sex="M", status="active",
+                                  mortClass="General",
+                                  tier=1, verbose=FALSE) {
 
     salaries <- c(salary);
     ages <- c(age);
@@ -258,12 +262,13 @@ simulateCareerForward <- function(year, age, service, salary, status,
 
         testAge <- age - (year - iyear);
 
-        if (verbose) cat (iyear, ": At age ", testAge,
+        if (verbose) cat (iyear, ": At age, ", testAge,
+                          ", service, ", currentService,
                           ", start ", currentStatus, sep="");
 
         ## Test for transitions.
         currentStatus <-
-            doesMemberDie(testAge, "male", currentStatus,
+            doesMemberDie(testAge, sex, currentStatus,
                           mortClass=mortClass);
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
@@ -326,28 +331,27 @@ projectCareerFromRecord <- function(salaryHistory, mortClass, tier,
                                      mortClass=mortClass, tier=tier,
                                      verbose=verbose);
 
-    return(tibble(year=c(head(backward$year, -1),
+    return(tibble(year=c(backward$year,
                          salaryHistory$year,
                          tail(forward$year, -1)),
-                  age=c(head(backward$age, -1),
+                  age=c(backward$age,
                         salaryHistory$age,
                         tail(forward$age, -1)),
-                  service=c(head(backward$service, -1),
+                  service=c(backward$service,
                             salaryHistory$service,
                             tail(forward$service, -1)),
-                  salary=c(head(backward$salary, -1),
+                  salary=c(backward$salary,
                            salaryHistory$salary,
                            tail(forward$salary, -1)),
-                  fromData=c(head(backward$fromData, -1),
+                  fromData=c(backward$fromData,
                              rep(TRUE, length(salaryHistory$salary)),
                              tail(forward$fromData, -1)),
-                  premium = c(rep(0, length(backward$salary) - 1),
+                  premium = c(rep(0, length(backward$salary)),
                               salaryHistory$premium,
                               rep(0, length(forward$salary) - 1)),
-                  status=factor(c(head(backward$status, -1),
+                  status=factor(c(backward$status,
                                   as.character(salaryHistory$status),
                                   tail(forward$status, -1)))));
-#                                levels=levels(salaryHistory$status))));
 }
 
 
@@ -364,15 +368,14 @@ projectCareerFromOneYear <- function(year, age, service, salary,
                                      mortClass=mortClass, tier=tier,
                                      verbose=verbose)
 
-    return(tibble(year=c(head(backward$year, -1), forward$year),
-                  age=c(head(backward$age, -1), forward$age),
-                  service=c(head(backward$service, -1), forward$service),
-                  salary=c(head(backward$salary, -1), forward$salary),
-                  fromData=c(head(backward$fromData, -1),
-                             forward$fromData),
+    return(tibble(year=c(backward$year, forward$year),
+                  age=c(backward$age, forward$age),
+                  service=c(backward$service, forward$service),
+                  salary=c(backward$salary, forward$salary),
+                  fromData=c(backward$fromData, forward$fromData),
                   premium=rep(0, length(backward$salary) +
-                                 length(forward$salary) - 1),
-                  status=factor(c(head(backward$status, -1), forward$status),
+                                 length(forward$salary)),
+                  status=factor(c(backward$status, forward$status),
                                 levels=c("active", "separated",
                                          "retired", "deceased"))));
 }
