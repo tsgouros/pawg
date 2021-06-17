@@ -9,14 +9,18 @@ estimate can be derived and the corresponding accrual rate.
 Here are the pieces:
 
 mortality.r -- Incorporates the pub2010 mortality tables into some R
-functions for convenience.
+  functions for convenience.
 
 newton.r -- Implements Newton's method for finding the accrual rate
-necessary to make a given cash flow net out to zero.
+  necessary to make a given cash flow net out to zero.
 
 car.r -- The classes and associated functions necessary to model the
-system and make the estimate.  It contains some functions meant to be
-overridden by specific functions tailored for the benefit structure
-and promotion policies of a given employer.
+  system and make the estimate.  It contains some functions meant to
+  be overridden by specific functions tailored for the benefit
+  structure and promotion policies of a given employer.
 
 qc.r -- An example of applying the system to a specific pension plan.
+
+qc-from-data.r -- An example of applying the system to a specific
+  pension plan, using more data than simply a single year from the
+  plan demographics table.
