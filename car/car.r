@@ -616,20 +616,28 @@ genEmployees <- function (N=1, ageRange=c(20,25), servRange=c(0,5),
     return(members);
 }
 
-makeTbl <- function(memberList) {
+## Make a tibble from a memberList.  The sampler is a function that
+## takes a member object and returns TRUE or FALSE whether it should
+## be included in the output tibble.
+##
+## e.g. function(m) { ifelse(m$tier == 1, TRUE, FALSE) }
+##
+makeTbl <- function(memberList, sampler=function(m) {TRUE} ) {
 
     out <- tibble();
 
     for (member in memberList) {
-        out <- rbind(out,
-                     tibble(id=c(member$id),
-                            hireYear=c(member$hireYear),
-                            sepYear=c(member$sepYear),
-                            retireYear=c(member$retireYear),
-                            maxSalary=c(max(member$salaryHistory$salary)),
-                            car=c(member$car),
-                            birthYear=c(member$birthYear),
-                            deathYear=c(max(member$salaryHistory$year))));
+        if (sampler(m))
+            out <- rbind(out,
+                         tibble(id=c(member$id),
+                                hireYear=c(member$hireYear),
+                                sepYear=c(member$sepYear),
+                                retireYear=c(member$retireYear),
+                                maxSalary=c(max(member$salaryHistory$salary)),
+                                car=c(member$car),
+                                tier=c(member$tier),
+                                birthYear=c(member$birthYear),
+                                deathYear=c(max(member$salaryHistory$year))));
     }
 
     return(out);
@@ -704,6 +712,7 @@ buildMasterCashFlow <- function(memberTbl, members, verbose=FALSE) {
 ## Given a function to construct a model population of plan members,
 ## this function will run that model and compute the CAR for its members.
 runModelOnce <- function(modelConstructionFunction,
+                         sampler=function(m) {TRUE},
                          verbose=FALSE) {
 
     model <- modelConstructionFunction(verbose=verbose);
@@ -712,7 +721,7 @@ runModelOnce <- function(modelConstructionFunction,
                      "members.\n");
 
     ## Make a summary table of all the members.
-    modelTbl <- makeTbl(model);
+    modelTbl <- makeTbl(model, sampler=sampler);
 
     ## Build the master cash flow matrix.
     modelMCF <- buildMasterCashFlow(modelTbl, model, verbose=verbose);
@@ -752,7 +761,9 @@ runModelOnce <- function(modelConstructionFunction,
                 modelOut=modelOut));
 }
 
-runModel <- function(modelConstructionFunction, N=1, verbose=FALSE) {
+runModel <- function(modelConstructionFunction, N=1,
+                     sampler=function(m) {TRUE},
+                     verbose=FALSE) {
     if (verbose) cat("Starting run on:", date(),"\n");
 
     ## Prepare the output, just a record of years and CAR estimates.
@@ -761,7 +772,8 @@ runModel <- function(modelConstructionFunction, N=1, verbose=FALSE) {
     for (i in 1:N) {
         if (verbose) cat("  ", date(), ": model run number", i, "...");
 
-        M <- runModelOnce(modelConstructionFunction, verbose=verbose)
+        M <- runModelOnce(modelConstructionFunction, sampler=sampler,
+                          verbose=verbose)
 
         modelOut <- rbind(modelOut, M$modelOut);
 
