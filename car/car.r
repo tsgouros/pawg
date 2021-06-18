@@ -627,7 +627,7 @@ makeTbl <- function(memberList, sampler=function(m) {TRUE} ) {
     out <- tibble();
 
     for (member in memberList) {
-        if (sampler(m))
+        if (sampler(member))
             out <- rbind(out,
                          tibble(id=c(member$id),
                                 hireYear=c(member$hireYear),
