@@ -80,8 +80,8 @@ pub2010headcountMortalityRatesTeacherFemale <-
 
 ## Given a member's age, sex, and status, rolls the dice to decide if
 ## they kick the bucket this year or survive to live another year.
-## Use the 'class' arg to select which category of table to use.
-## class == NONE gets you the general healthy table.
+## Use the 'mortClass' arg to select which category of table to use.
+## Omitting it gets you the general healthy table.
 ##
 ## The 'weight' arg selects if you want to use the headcount weighted
 ## or amount weighted table.  The memberSalary is there for using the
@@ -90,25 +90,25 @@ doesMemberDie <- function(memberAge, memberSex, memberStatus,
                           mortClass="General", memberSalary=0,
                           weight="headcount", verbose=FALSE) {
 
-    if (verbose) cat("rolling dice for ", mortClass,
-                     ", aged ", memberAge, ", (",
-                     memberStatus, ") ...", sep="");
+    if (verbose) cat("\n   rolling dice for ", mortClass,
+                     "; ", memberStatus, " member (", memberSex,
+                     "), aged ", memberAge, "...", sep="");
 
     ## First, find the appropriate number from the mortality tables.
     if (mortClass == "Safety") {
-        if (memberSex == "female") {
+        if (memberSex == "F") {
             table <- pub2010headcountMortalityRatesSafetyFemale;
         } else {
             table <- pub2010headcountMortalityRatesSafetyMale;
         }
     } else if (mortClass == "Teacher") {
-        if (memberSex == "female") {
+        if (memberSex == "F") {
             table <- pub2010headcountMortalityRatesTeacherFemale;
         } else {
             table <- pub2010headcountMortalityRatesTeacherMale;
         }
     } else { ## This is for mortClass == "General" and anything else.
-        if (memberSex == "female") {
+        if (memberSex == "F") {
             table <- pub2010headcountMortalityRatesGeneralFemale;
         } else {
             table <- pub2010headcountMortalityRatesGeneralMale;

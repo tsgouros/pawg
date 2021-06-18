@@ -39,6 +39,8 @@ source("mortality.r")
 ## separation or retirement, given the age and service years of the
 ## employee.
 doesMemberSeparate <- function(age, service, status, tier=1) {
+    cat("Running default doesMemberSeparate.\n");
+
     ## If this is not currently an active employee, get out.
     if (status != "active") return(status);
 
@@ -54,24 +56,33 @@ doesMemberSeparate <- function(age, service, status, tier=1) {
 }
 
 doesMemberRetire <- function(age, service, status, tier=1) {
+    cat("Running default doesMemberRetire.\n");
+
     ## If already retired, get out.
     if ((status == "retired") | (status == "deceased") |
         (status == "disabled") ) return(status);
 
-    if ((age >= 62) & (service >= 15)) {
-        if ( ((age == 62) & (runif(1) > 0.4)) |
-             (((age > 62) & (age < 70)) & (runif(1) > 0.5)) |
+    ## The service years on input refer to years that have begun, but
+    ## not necessarily completed.  We want completed years.  This is
+    ## related to the model's approximation that events happen on the
+    ## transition from one year to the next, as opposed to the real
+    ## world, where events happen whenever they feel like it.
+    completedYears <- service - 1;
+
+    if ((age >= 62) && (completedYears >= 15)) {
+        if ( ((age == 62) && (runif(1) > 0.4)) |
+             (((age > 62) && (age < 70)) && (runif(1) > 0.5)) |
              (age >= 70) ) {
             status <- "retired";
         }
-    } else if (service >= 20) {
+    } else if (completedYears >= 20) {
             rates <- c(0.14, 0.14, 0.07, 0.07, 0.07,
                        0.22, 0.26, 0.19, 0.32, 0.30,
                        0.30, 0.30, 0.55, 0.55, 1.00);
 
-            service <- min(service, 34);
+            completedYears <- min(completedYears, 34);
             ## Roll the dice.
-            if (runif(1) < rates[service - 19]) status <- "retired";
+            if (runif(1) < rates[completedYears - 19]) status <- "retired";
     }
 
     return(status);
@@ -79,6 +90,8 @@ doesMemberRetire <- function(age, service, status, tier=1) {
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
                                      mortClass="General", tier=1) {
+    cat("Running default doesMemberBecomeDisabled.\n");
+
     ## If already retired or disabled, don't change anything and get out.
     if ((status == "retired") | (status == "deceased") |
         (status == "disabled") ) return(status);
@@ -105,18 +118,19 @@ source("mortality.r")
 ## each valuation report.  Tier refers to any kind of subdivision
 ## among the members.
 projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
+    cat("Running default projectSalaryDelta.\n");
 
     if (age < 25) {
         out <- 1.075;
-    } else if ((age >= 25) & (age < 30)) {
+    } else if ((age >= 25) && (age < 30)) {
         out <- 1.0735;
-    } else if ((age >= 30) & (age < 35)) {
+    } else if ((age >= 30) && (age < 35)) {
         out <- 1.0674;
-    } else if ((age >= 35) & (age < 40)) {
+    } else if ((age >= 35) && (age < 40)) {
         out <- 1.0556;
-    } else if ((age >= 40) & (age < 45)) {
+    } else if ((age >= 40) && (age < 45)) {
         out <- 1.0446;
-    } else if ((age >= 45) & (age < 50)) {
+    } else if ((age >= 45) && (age < 50)) {
         out <- 1.0374;
     } else if (age >= 50) {
         out <- 1.035;
@@ -126,6 +140,7 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
 }
 
 projectPension <- function(salaryHistory, tier=1) {
+    cat("Running default projectPension.\n");
 
     startingPension <- max(salaryHistory$salary) * 0.55;
     cola <- 1.02;
@@ -149,6 +164,8 @@ projectPension <- function(salaryHistory, tier=1) {
 ## premiums paid into the system for this employee for each year.
 ## (Combined employer and employee share.)
 projectPremiums <- function(salaryHistory) {
+    cat("Running default projectPremiums.\n");
+
     return(salaryHistory %>%
            mutate(premium = salary * .25))
 }
@@ -161,12 +178,12 @@ projectPremiums <- function(salaryHistory) {
 ## with salary figures for each working year, and a status column for
 ## active, separated, or retired.
 ##
-## New: can also input a salaryHistory tibble, with year, age,
+## Can also input a salaryHistory tibble, with year, age,
 ## service, (annual) salary, and status columns.  This is assumed to
 ## be a partial record, and the function will use the assumptions and
 ## mortality tables to fill out the career of this person.
 projectCareer <- function(year=0, age=0, service=0, salary=0,
-                          salaryHistory=NA,
+                          salaryHistory=NA, sex="M",
                           mortClass="General", tier=1,
                           verbose=FALSE) {
 
@@ -175,12 +192,14 @@ projectCareer <- function(year=0, age=0, service=0, salary=0,
 
         ## If so we just have a single year to project from.
         career <- projectCareerFromOneYear(year, age, service, salary,
-                                           mortClass, tier, verbose);
+                                           sex=sex, mortClass=mortClass,
+                                           tier=tier, verbose=verbose);
     } else {
 
         ## We have a few years to project from.
-        career <- projectCareerFromRecord(salaryHistory,
-                                          mortClass, tier, verbose)
+        career <- projectCareerFromRecord(salaryHistory, sex=sex,
+                                          mortClass=mortClass,
+                                          tier=tier, verbose=verbose)
     }
 
     return(career);
@@ -258,24 +277,26 @@ simulateCareerForward <- function(year, age, service, salary,
     currentStatus <- status;
     currentService <- service + 1;
     iyear <- year + 1;
-    while((iyear < (year + (110 - age))) & (currentStatus != "deceased")) {
+    while((iyear < (year + (110 - age))) && (currentStatus != "deceased")) {
 
         testAge <- age - (year - iyear);
 
-        if (verbose) cat (iyear, ": At age, ", testAge,
-                          ", service, ", currentService,
-                          ", start ", currentStatus, sep="");
+        if (verbose) cat (iyear, ": At age: ", testAge,
+                          ", service: ", currentService,
+                          ", start as: ", currentStatus, sep="");
 
         ## Test for transitions.
         currentStatus <-
             doesMemberDie(testAge, sex, currentStatus,
-                          mortClass=mortClass);
+                          mortClass=mortClass, verbose=verbose);
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus);
-        currentStatus <-
-            doesMemberRetire(testAge, currentService, currentStatus, tier);
 
-        if (verbose) cat (", end ", currentStatus, ".\n", sep="");
+        currentStatus <-
+            doesMemberRetire(testAge, currentService, currentStatus,
+                             tier=tier, verbose=verbose);
+
+        if (verbose) cat (", end as:", currentStatus, ".\n", sep="");
 
         salaries <-
             c(salaries,
@@ -313,23 +334,27 @@ simulateCareerForward <- function(year, age, service, salary,
 ## Given a few years of salary, project the rest of a member's career
 ## and life.  The salaryHistory arg is a tibble with year, salary,
 ## age, service, and status columns.
-projectCareerFromRecord <- function(salaryHistory, mortClass, tier,
+projectCareerFromRecord <- function(salaryHistory, sex="M",
+                                    mortClass="General", tier=1,
                                     verbose=FALSE) {
 
     backward <- simulateCareerBackward(head(salaryHistory$year, 1),
                                        head(salaryHistory$age, 1),
                                        head(salaryHistory$service, 1),
                                        head(salaryHistory$salary, 1),
-                                       head(as.character(salaryHistory$status), 1),
+                                       sex=sex,
+                                       status=head(as.character(salaryHistory$status), 1),
+                                       mortClass=mortClass,
                                        tier=tier, verbose=verbose);
 
     forward <- simulateCareerForward(tail(salaryHistory$year, 1),
                                      tail(salaryHistory$age, 1),
                                      tail(salaryHistory$service, 1),
                                      tail(salaryHistory$salary, 1),
-                                     tail(as.character(salaryHistory$status), 1),
-                                     mortClass=mortClass, tier=tier,
-                                     verbose=verbose);
+                                     sex=sex,
+                                     status=tail(as.character(salaryHistory$status), 1),
+                                     mortClass=mortClass,
+                                     tier=tier, verbose=verbose);
 
     return(tibble(year=c(backward$year,
                          salaryHistory$year,
@@ -357,14 +382,17 @@ projectCareerFromRecord <- function(salaryHistory, mortClass, tier,
 
 ## Given a single year's record, project what a career might look
 ## like.  We assume that the status is 'active' for the given year.
-projectCareerFromOneYear <- function(year, age, service, salary,
-                                     mortClass, tier,
+projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
+                                     mortClass="General", tier=1,
                                      verbose=FALSE) {
 
-    backward <- simulateCareerBackward(year, age, service, salary, "active",
-                                       tier=tier, verbose=verbose);
+    backward <- simulateCareerBackward(year, age, service, salary,
+                                       sex=sex, status="active",
+                                       mortClass=mortClass, tier=tier,
+                                       verbose=verbose)
 
-    forward <- simulateCareerForward(year, age, service, salary, "active",
+    forward <- simulateCareerForward(year, age, service, salary,
+                                     sex=sex, status="active",
                                      mortClass=mortClass, tier=tier,
                                      verbose=verbose)
 
@@ -399,7 +427,7 @@ member <- function(age=0, service=0, salary=0,
         ## If all we have is the single year's information, work with
         ## that.
 
-        if ((birthYear == 0) & (age != 0)) {
+        if ((birthYear == 0) && (age != 0)) {
             birthYear <- currentYear - age;
         } else {
             age <- currentYear - birthYear ;
@@ -415,8 +443,10 @@ member <- function(age=0, service=0, salary=0,
 
         ## Generate an entire career's worth of salary history from
         ## the single-year snapshot.
-        salaryHistory <- projectCareer(currentYear, age, service,
-                                       salary, mortClass);
+        salaryHistory <- projectCareer(year=currentYear, age=age,
+                                       service=service, salary=salary,
+                                       sex=sex, mortClass=mortClass,
+                                       tier=tier, verbose=verbose);
     } else {
         ## If we're here, we already have some fraction of a member's
         ## salary history to work with.
@@ -429,7 +459,7 @@ member <- function(age=0, service=0, salary=0,
 
         ## Generate the rest of a career's worth of salary history
         ## from the history we've been given.
-        salaryHistory <- projectCareer(salaryHistory=salaryHistory,
+        salaryHistory <- projectCareer(salaryHistory=salaryHistory, sex=sex,
                                        mortClass=mortClass, tier=tier,
                                        verbose=verbose);
     }
@@ -676,7 +706,7 @@ buildMasterCashFlow <- function(memberTbl, members, verbose=FALSE) {
 runModelOnce <- function(modelConstructionFunction,
                          verbose=FALSE) {
 
-    model <- modelConstructionFunction();
+    model <- modelConstructionFunction(verbose=verbose);
 
     if (verbose) cat("model: Constructed a model with", length(model),
                      "members.\n");

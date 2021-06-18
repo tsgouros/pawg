@@ -24,36 +24,48 @@ doesMemberSeparate <- function(age, service, status, tier=1) {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, tier=1) {
+doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
     ## If already retired, get out.
     if ((status == "retired") | (status == "deceased")) return(status);
 
+    ## The service years on input refer to years that have begun, but
+    ## not necessarily completed.  We want completed years.  This is
+    ## related to the model's approximation that events happen on the
+    ## transition from one year to the next, as opposed to the real
+    ## world, where events happen whenever they feel like it.
+    completedYears <- service - 1;
+    if (completedYears < 10) return(status);
+
+    if (verbose) cat(" --retire? age: ", age, ", service: ", service,
+                     ", tier: ", tier, " begin: ", status, "...",
+                     sep="");
+
     if (tier == 1) {
 
-        if ((age >= 62) & (service <= 20)) {
-            if ( ((age == 62) & (runif(1) > 0.4)) |
-                 (((age > 62) & (age < 70)) & (runif(1) > 0.5)) |
+        if ((age >= 62) && (completedYears <= 20)) {
+            if ( ((age == 62) && (runif(1) > 0.4)) |
+                 (((age > 62) && (age < 70)) && (runif(1) > 0.5)) |
                  (age >= 70) ) {
                 status <- "retired";
             }
-        } else if (service >= 20) {
+        } else if (completedYears >= 20) {
             rates <- c(0.14, 0.14, 0.07, 0.07, 0.07,
                        0.22, 0.26, 0.19, 0.32, 0.30,
                        0.30, 0.30, 0.55, 0.55, 1.00);
 
-            service <- min(service, 34);
+            completedYears <- min(completedYears, 34);
             ## Roll the dice.
-            if (runif(1) < rates[service - 19]) status <- "retired";
+            if (runif(1) < rates[completedYears - 19]) status <- "retired";
         }
     } else if (tier == 2) {
-        if ((age >= 53) & (service >= 15)) {
+        if ((age >= 53) && (completedYears >= 15)) {
             rates <- c(0.22, 0.26, 0.19, 0.32, 0.30,
                        0.30, 0.30, 0.55, 0.55, 0.55,
                        0.55, 1.00);
             if (runif(1) < rates[age - 52]) status <- "retired";
         }
     } else if (tier == 3) {
-        if ((age >= 55) & (service >= 15)) {
+        if ((age >= 55) && (completedYears >= 15)) {
             rates <- c(0.19, 0.32, 0.30, 0.30, 0.30,
                        0.55, 0.55, 0.55, 0.55, 1.00);
             if (runif(1) < rates[age - 54]) status <- "retired";
@@ -67,6 +79,7 @@ doesMemberRetire <- function(age, service, status, tier=1) {
         if (age > 65) status <- "retired";
     }
 
+    if (verbose) cat("result: ", status, "\n", sep="");
 
     return(status);
 }
@@ -95,15 +108,15 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
 
     if (age < 25) {
         out <- 1.075;
-    } else if ((age >= 25) & (age < 30)) {
+    } else if ((age >= 25) && (age < 30)) {
         out <- 1.0735;
-    } else if ((age >= 30) & (age < 35)) {
+    } else if ((age >= 30) && (age < 35)) {
         out <- 1.0674;
-    } else if ((age >= 35) & (age < 40)) {
+    } else if ((age >= 35) && (age < 40)) {
         out <- 1.0556;
-    } else if ((age >= 40) & (age < 45)) {
+    } else if ((age >= 40) && (age < 45)) {
         out <- 1.0446;
-    } else if ((age >= 45) & (age < 50)) {
+    } else if ((age >= 45) && (age < 50)) {
         out <- 1.0374;
     } else if (age >= 50) {
         out <- 1.035;
@@ -132,7 +145,7 @@ projectPension <- function(salaryHistory, tier=1) {
 
         startingPension <- 0.5 * avgSalary;
 
-        if ((service >= 15) & (service < 20)) {
+        if ((service >= 15) && (service < 20)) {
             startingPension <- startingPension * (1 - ((20 - service) * 0.04));
         } else if (service >= 25) {
             startingPension <- startingPension * (1 + ((service - 20) * 0.025));
@@ -153,17 +166,17 @@ projectPension <- function(salaryHistory, tier=1) {
             c(0, 0, 0, 0, s);
         avgSalary <- max(fiveYears) / 5.0;
 
-        if ((service >= 15) & (service < 17)) {
+        if ((service >= 15) && (service < 17)) {
             benefitMultiplier <- 0.015;
-        } else if ((service >= 17) & (service < 19)) {
+        } else if ((service >= 17) && (service < 19)) {
             benefitMultiplier <- 0.0175;
-        } else if ((service >= 19) & (service < 22)) {
+        } else if ((service >= 19) && (service < 22)) {
             benefitMultiplier <- 0.02;
-        } else if ((service >= 22) & (service < 25)) {
+        } else if ((service >= 22) && (service < 25)) {
             benefitMultiplier <- 0.0225;
         } else if (service >= 25) {
             benefitMultiplier <- 0.025;
-        } else { print(salaryHistory); cat("tier:", tier, "service:", service, "\n");}
+        } else { print(as.data.frame(salaryHistory)); cat("tier:", tier, "service:", service, "\n");}
 
         startingPension <- avgSalary * (service * benefitMultiplier);
 
@@ -176,9 +189,6 @@ projectPension <- function(salaryHistory, tier=1) {
                   select(X) %>%
                   unlist(use.names=FALSE), 15);
 
-        cat(">>>>>>\n");
-        print(s);
-
         fiveYears <-
             c(s, 0, 0, 0, 0) +
             c(0, s, 0, 0, 0) +
@@ -187,22 +197,28 @@ projectPension <- function(salaryHistory, tier=1) {
             c(0, 0, 0, 0, s);
         avgSalary <- max(fiveYears) / 5.0;
 
-        if ((service >= 15) & (service < 17)) {
+        if ((service >= 15) && (service < 17)) {
             benefitMultiplier <- 0.015;
-        } else if ((service >= 17) & (service < 19)) {
+        } else if ((service >= 17) && (service < 19)) {
             benefitMultiplier <- 0.0175;
-        } else if ((service >= 19) & (service < 22)) {
+        } else if ((service >= 19) && (service < 22)) {
             benefitMultiplier <- 0.02;
-        } else if ((service >= 22) & (service < 25)) {
+        } else if ((service >= 22) && (service < 25)) {
             benefitMultiplier <- 0.0225;
         } else if (service >= 25) {
             benefitMultiplier <- 0.025;
-        } else { print(salaryHistory); cat("tier:", tier, "service:", service, "\n");}
+        } else {
+            ## This is an error condition, and a fault will follow.
+            print(as.data.frame(salaryHistory));
+            cat("tier:", tier, "service:", service, "\n");
+        }
 
         startingPension <- avgSalary * (service * benefitMultiplier);
 
         startingPension <- min(0.8 * avgSalary, startingPension);
     } else if (tier == 0) {
+        ## The tier 0 people can retire again but they don't get
+        ## another pension.
         startingPension <- 0.0;
     }
 
