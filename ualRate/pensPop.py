@@ -3,50 +3,6 @@ from random import *
 from collections import deque
 import numpy as np
 
-## TJ: Can we encapsulate the mortality tables into a class?  Read
-## all the data as you have it in the __init__() method, and give us
-## simple accessors that take a sex, age, and mortality class and
-## return a chance of dying.  Or better yet, just tuck all this into
-## the __init__() method of pensPop.
-##
-##
-
-
-"""using openpyxl to access spreadsheets, creating dictionary of values."""
-import openpyxl
-from pathlib import Path
-m_file = Path('..', 'mortalityTables', 'pub-2010-amount-mort-rates.xlsx')
-m_wb = openpyxl.load_workbook(m_file)
-pubG = m_wb['PubG-2010']
-mort_data_f = {}
-mort_data_m = {}
-## TJ: The triple quotes thing is only for the doc strings right
-## after a function declaration. Use hash marks for in-code comments.
-##""" read mortality rates into male and female dictionaries"""
-for i, row in enumerate(pubG.iter_rows(4, pubG.max_row)):
-    if i == 0:
-
-        mort_data_f[row[3]] = []
-        mort_data_f[row[4]] = []
-        mort_data_f[row[5]] = []
-        mort_data_f[row[6]] = []
-
-        mort_data_m[row[8]] = []
-        mort_data_m[row[9]] = []
-        mort_data_m[row[10]] = []
-        mort_data_m[row[11]] = []
-    else:
-        mort_data_f['Employee'].append(row[3])
-        mort_data_f['Healthy Retiree'].append(row[4])
-        mort_data_f['Disabled Retiree'].append(row[5])
-        mort_data_f['Contingent Survivor'].append(row[6])
-
-        mort_data_m['Employee'].append(row[8])
-        mort_data_m['Healthy Retiree'].append(row[9])
-        mort_data_m['Disabled Retiree'].append(row[10])
-        mort_data_m['Contingent Survivor'].append(row[11])
-
-
 class pensMember(object):
     def __init__(
         self,
@@ -75,6 +31,13 @@ class pensMember(object):
         self.pension = 0
         self.cola = 1.025
         self.discountrate = 1.07
+        
+        self.mRates = pensMort() ##discuss during check-in
+        ## Tom, what do you think is the best way to integrate
+        ## the pensMort class into the existing code? I found this
+        ## to be a solution that creates a lot more pensMort() instances 
+        ## than necessary, but involves minimal changes to 
+        ## the original code. 
 
         self.salaryHistory = deque([salary])
         self.simulateCareerBackward()
@@ -198,26 +161,7 @@ class pensMember(object):
         return False
 
     def doesMemberDie(self):
-        if self.sex == "F":
-            table = mort_data_f
-        else:
-            table = mort_data_m
-
-        age = self.age - 18
-        rate = 0
-
-        if self.status == "active":
-            rate = table['Employee'][age]
-        elif self.status == "retired"
-            rate = table['Healthy Retiree'][age]
-        elif self.status == "deceased":
-            rate = 1
-        """are there more statuses to account for?"""
-        ## TJ: Yes, "separated" are people who have quit or been laid off,
-        ## but are still eligible for a pension.  They are equivalent
-        ## in mortality risk to "active".
-        ##
-        ## We are ignoring "disabled" for now.
+        rate = self.mRates.getRate(self.sex, self.age, self.status)
 
         return random.randrange(100) < (rate*100)
 
