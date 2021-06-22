@@ -4,12 +4,11 @@ import numpy as np
 class pensFund(object):
 	def __init__(assetTotal, currYear, pctE = 0.6, pctB = 0.3, pctO = 0.1):
 		self.currentYear = currYear
-		
 		self.pcts = [pctE, pctB, pctO]
-    
-    	self.equity = self.pcts[0]*assetTotal
-    	self.bonds = self.pcts[1]*assetTotal
-    	self.other = self.pcts[2]*assetTotal
+		
+		self.equity = self.pcts[0]*assetTotal
+		self.bonds = self.pcts[1]*assetTotal
+		self.other = self.pcts[2]*assetTotal
 		
 		self.ledger = {self.currentYear : [self.equity, self.bonds, self.other]}
 	
@@ -23,12 +22,12 @@ class pensFund(object):
 	
 	def makePayments(self, premiums, benefits):
 		self.equity += self.pcts[0]*premiums
-    	self.bonds += self.pcts[1]*premiums
-    	self.other += self.pcts[2]*premiums
+		self.bonds += self.pcts[1]*premiums
+		self.other += self.pcts[2]*premiums
 		
 		self.equity -= self.pcts[0]*benefits
-    	self.bonds -= self.pcts[1]*benefits
-    	self.other -= self.pcts[2]*benefits
+		self.bonds -= self.pcts[1]*benefits
+		self.other -= self.pcts[2]*benefits
 		
 	def addInvestmentEarnings(self, year):
 		e = np.random.normal(0.06, 0.03)
