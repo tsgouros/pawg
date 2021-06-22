@@ -12,10 +12,10 @@ class pensFund(object):
 		
 		self.ledger = {self.currentYear : [self.equity, self.bonds, self.other]}
 	
-	def annualReport(self, year):
+	def annualReport(self, year = self.currentYear):
 		if year in self.ledger:
 			report = self.ledger[year]
-			return "Assets for the year " + year + ":\nEquity = $" + str(report[0]) + "\nBonds = $" + str(report[1]) + "\nOther = $" + str(report[2]) + "\nTotal: $" + str(sum(report))
+			return "Assets for the year " + year + ":\n\tEquity = $" + str(report[0]) + "\n\tBonds = $" + str(report[1]) + "\n\tOther = $" + str(report[2]) + "\nTotal: $" + str(sum(report))
 		else:
 			return "Assets could not be found for the year " + year + "."
 		
@@ -40,6 +40,24 @@ class pensFund(object):
 		
 		self.currentYear = year 
 		self.ledger[self.currentYear] = [self.equity, self.bonds, self.other]
+		
+##### TESTING #####
+	
+def testFund():
+	print("Creating a fund. assetTotal = 200, currYear = 2020.\n")
+	fund = pensFund(200, 2020)
+	print(fund.annualReport())
+	print("\nAdvancing one year...\n")
+	fund.makePayments(50,100)
+	fund.addInvestmentEarnings(2021)
+	print(fund.annualReport(2021))
+	print(fund.annualReport(2020))
+	print(fund.annualReport(2022))
+	
+	
+if __name__ == "__main__":
+	testFund()
+		
 		
     
     
