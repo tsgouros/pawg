@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from random import *
+import random
 from collections import deque
 import numpy as np
 import pandas as pd
@@ -87,7 +87,7 @@ class pensMember(object):
         self.getMortSex()
 
         if self.id == "*":
-            self.id = "%0.6x" % randint(1, pow(16, 6))
+            self.id = "%0.6x" % random.randint(1, pow(16, 6))
 
     def simulateCareerBackward(self):
         """Takes the current salary and service and projects a salary
@@ -103,7 +103,7 @@ class pensMember(object):
 
         ## That first year was probably not a complete year.  Roll
         ## some dice and pick a random fraction of the year.
-        self.salaryHistory[0] = random() * self.salaryHistory[0]
+        self.salaryHistory[0] = random.random() * self.salaryHistory[0]
 
     def projectSalaryDelta(self):
         """Uses the age, service, and tier to project the change in pay
@@ -160,7 +160,7 @@ class pensMember(object):
         ]
 
         service = min(self.service, 20)
-        if random() < rates[service - 1]:
+        if random.random() < rates[service - 1]:
             return True
         else:
             return False
@@ -176,8 +176,8 @@ class pensMember(object):
 
         if self.age >= 62 and self.service >= 15:
             if (
-                (self.age == 62 and random() > 0.4)
-                or (self.age > 62 and self.age < 70 and random() > 0.5)
+                (self.age == 62 and random.random() > 0.4)
+                or (self.age > 62 and self.age < 70 and random.random() > 0.5)
                 or (self.age >= 70)
             ):
                 return True
@@ -200,7 +200,7 @@ class pensMember(object):
                     1.00,
                 ]
                 service = min(self.service, 34)
-                if random() < rates[service - 20]:
+                if random.random() < rates[service - 20]:
                     return True
         return False
     def getMortSex(self):
@@ -214,12 +214,12 @@ class pensMember(object):
         """TBD: Check if member dies"""
 
         if self.status == "active": 
-            if random() < self.mortDict[self.age][0]:
+            if random.random() < self.mortDict[self.age][0]:
                 return True
 
         ## ET: Assuming every retiree is healthy for now 
         elif self.status == "retired": 
-            if random() < self.mortDict[self.age][1]:
+            if random.random() < self.mortDict[self.age][1]:
                 return True
         elif self.status == "deceased":
             return True
@@ -270,8 +270,6 @@ class pensMember(object):
                 self.ageOneYear()
                 yearsUntilRetirement += 1
 
-            yearOfRetirement = self.currentYear
-
         ## Step 2: Estimate how many years of retirement this person
         ## is likely to enjoy. (Or how many years left, for members
         ## who are already retired.)
@@ -292,6 +290,21 @@ class pensMember(object):
             liabilityPresentValue = liabilityPresentValue + (liability) / (
                 self.discountrate ** i
             )
+
+    def print(self):
+        print("Member %s: Age: %.0f, Sex: %s, Class: %s, Tier, %s" % 
+              (self.id, self.age, self.sex, self.mortalityClass, self.tier))
+        print("BirthYear: %.0f, HireYear: %.0f, Service: %.0f, RetireYear: %.0f" % 
+              (self.birthYear, self.hireYear, self.service, self.retireYear))
+        print("Current Year: %.0f, Salary: %.0f, " %
+              (self.currentYear, self.salary))
+#        self.pension = 0
+#        self.cola = 1.025
+#        self.discountrate = 1.07
+#        self.mortDict = 0
+#        self.salaryHistory = deque([salary])
+#        self.simulateCareerBackward()
+#        self.getMortSex()
 
 
 class pensPop(object):
@@ -316,7 +329,7 @@ class pensPop(object):
         out = []
         for i in range(0, N):
             if sex == "*":
-                if random() > 0.5:
+                if random.random() > 0.5:
                     chosenSex = "M"
                 else:
                     chosenSex = "F"
@@ -324,9 +337,9 @@ class pensPop(object):
                 chosenSex = sex
             out.append(
                 pensMember(
-                    randint(ageRange[0], ageRange[1]),
+                    random.randint(ageRange[0], ageRange[1]),
                     chosenSex,
-                    randint(serviceRange[0], serviceRange[1]),
+                    random.randint(serviceRange[0], serviceRange[1]),
                     np.random.normal(avgSalary, avgSalary / 15),
                     2021,
                     mortalityClass=mortalityClass,
@@ -444,7 +457,7 @@ class pensPop(object):
         for member in self.members: 
             if member.status == "retired" or member.status == "separated":
                 counter +=1
-        if random() < pct: 
+        if random.random() < pct: 
             self.members.extend(self.simulateMembers(counter, ageRange=(self.avgAge-5, self.avgAge+5), serviceRange=(0, 1), avgSalary=self.startingSalary))
         else: 
             self.members.extend(self.simulateMembers(counter * pct, ageRange=(self.avgAge-5, self.avgAge+5), serviceRange=(0, 1), avgSalary=self.startingSalary))
@@ -477,6 +490,13 @@ class pensPop(object):
             sum += m.calculateLiability()
         return sum
 
+    def print(self):
+        print("N: %.0f, %0.f active, %0.f retired" % 
+              (len(self.members),
+               sum([m.status == 'active' for m in self.members]),
+               sum([m.status == 'retired' for m in self.members])))
+        print("Average salary: %.0f" % 
+              (sum([m.salary for m in self.members])/len(self.members)))
 
 
 ##################### TESTING FUNCTIONS ######################
@@ -522,7 +542,7 @@ if __name__ == "__main__":
         members = [m1,m2,m3]
         ages = [20,30,50]
 
-        years = randint(5,15)
+        years = random.randint(5,15)
 
         for i in range(years):
             for m in members:
