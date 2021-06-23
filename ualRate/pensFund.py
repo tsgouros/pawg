@@ -2,7 +2,7 @@
 import numpy as np
 
 class pensFund(object):
-	def __init__(assetTotal, currYear, pctE = 0.6, pctB = 0.3, pctO = 0.1):
+	def __init__(self, assetTotal, currYear, pctE = 0.6, pctB = 0.3, pctO = 0.1):
 		self.currentYear = currYear
 		self.pcts = [pctE, pctB, pctO]
 		
@@ -12,12 +12,19 @@ class pensFund(object):
 		
 		self.ledger = {self.currentYear : [self.equity, self.bonds, self.other]}
 	
-	def annualReport(self, year = self.currentYear):
+	def annualReport(self, year=0):
+		if year == 0:
+			year = self.currentYear
 		if year in self.ledger:
 			report = self.ledger[year]
-			return "Assets for the year " + year + ":\n\tEquity = $" + str(report[0]) + "\n\tBonds = $" + str(report[1]) + "\n\tOther = $" + str(report[2]) + "\nTotal: $" + str(sum(report))
+			out = ("Assets for the year %.0f:\n\tEquity = $%0.f\n\tBonds = $%.0f\n\tOther = $%.0f\nTotal: $%.0f" %
+                  (year, report[0], report[1], report[2], sum(report)))
+			return out
 		else:
-			return "Assets could not be found for the year " + year + "."
+			return "Assets could not be found for the year %.0f." % year
+        
+	def print(self):
+		print(self.annualReport())
 		
 	
 	def makePayments(self, premiums, benefits):
