@@ -285,12 +285,12 @@ class pensMember(object):
         liabilityPresentValue = 0
         for i in range(yearsOfRetirement):
             ## Step 3: estimate retirement benefit earned
-            liability = self.pension * self.cola ^ (i - 1)
+            liability = self.pension * self.cola ** (i - 1)
 
             ## Step 4: Apply the discount rate for each of the years to
             ## get the present value in the current year.
             liabilityPresentValue = liabilityPresentValue + (liability) / (
-                self.discountrate ^ i
+                self.discountrate ** i
             )
 
 
@@ -510,7 +510,8 @@ if __name__ == "__main__":
         print(counter) ## ET: should be around 30 
     
     def testcalculateLiability():
-        
+        andy = pensMember(62, "M", 15, 1000, 2005)
+        print(andy.calculateLiability())
 
 
     def testAgeOneYear():
@@ -554,4 +555,5 @@ if __name__ == "__main__":
     testdoesMemberRetire()
     testdoesMemberSeparate()
     testdoesMemberDie()
+    testcalculateLiability()
     testAgeOneYear()
