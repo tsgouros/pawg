@@ -6,12 +6,6 @@ import pandas as pd
 import openpyxl
 from pathlib import Path
 
-
-
-
-
-
-
 class pensMort: 
     def __init__(self, sex):
         self.sex = sex
@@ -475,7 +469,7 @@ class pensPop(object):
         younger members."""
 
     def calculateTotalLiability(self):
-        """Calculate the present value of the liability for all the
+        """Calculate the present value of the liability, aka normal cost, for all the
         members."""
 
         sum = 0
@@ -483,7 +477,6 @@ class pensPop(object):
             sum += m.calculateLiability()
         return sum
 
-        
 
 
 ##################### TESTING FUNCTIONS ######################
@@ -515,6 +508,9 @@ if __name__ == "__main__":
             if andy.doesMemberDie():
                 counter += 1 
         print(counter) ## ET: should be around 30 
+    
+    def testcalculateLiability():
+        
 
 
     def testAgeOneYear():
