@@ -27,11 +27,12 @@ class pensFund(object):
 		print(self.annualReport())
 		
 	
-	def makePayments(self, premiums, benefits):
+	def payPremiums(self, premiums):
 		self.equity += self.pcts[0]*premiums
 		self.bonds += self.pcts[1]*premiums
 		self.other += self.pcts[2]*premiums
 		
+	def payBenefits(self, benefits):
 		self.equity -= self.pcts[0]*benefits
 		self.bonds -= self.pcts[1]*benefits
 		self.other -= self.pcts[2]*benefits
