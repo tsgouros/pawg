@@ -12,26 +12,22 @@ class pensPlan(object):
 
         self.population = pensPop()
         self.population.simulateMembers(N,
-                                        ageRange=c(24, 65),
+                                        ageRange=(24, 65),
                                         serviceRange=(1,30))
         self.liability = self.population.calculateLiability(self.discountRate)
         ## Start off 3/4 funded.
         self.fund = pensFund(0.75 * self.liability, self.currentYear)
-        ## I think we could make the assets into a class that looks like:
-        ## pensFund.__init__(assetTotal,
-        ##                   pctEquity=0.6,
-        ##                   pctBonds=0.3,
-        ##                   pctOther=0.1)
-        ##
-        ## The point of this investigation is to look at the growth in
-        ## the liability in the absence of amortization payments, so
-        ## we can leave them out for now.
 
 
     def annualReport(self, year):
+        #show number of active and retired members
         print(self.population.active(), self.population.retired())
+        
+        #Show current liability
         print(self.calculateLiability(self.discountRate))
-        print(self.fund.annualReport(year))
+        
+        #Show assets 
+        self.fund.print()
 
     def advanceOneYear(self):
         self.currentYear = self.population.advanceOneYear()
@@ -39,7 +35,7 @@ class pensPlan(object):
 
         ## Calculate the increment of the normal cost.
         premiumPayments = self.population.calculateLiability(self.discountRate) - self.liability
-        self.fund.makePayments(premiumPayments)
+        self.fund.payPremiums(premiumPayments)
         self.fund.addInvestmentEarnings(self.currentYear)
 
 
