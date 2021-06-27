@@ -497,6 +497,21 @@ class pensPop(object):
                sum([m.status == 'retired' for m in self.members])))
         print("Average salary: %.0f" % 
               (sum([m.salary for m in self.members])/len(self.members)))
+        
+    def active(self):
+        sum = 0
+        for member in self.members:
+            if member.status == "active":
+                sum += 1
+        return sum
+    
+    def retired(self):
+        sum = 0
+        for member in self.members:
+            if member.status == "retired":
+                sum += 1
+        return sum
+    
 
 
 ##################### TESTING FUNCTIONS ######################
