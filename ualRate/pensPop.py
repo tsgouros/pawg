@@ -7,7 +7,8 @@ import openpyxl
 from pathlib import Path
 from copy import deepcopy
 
-class pensMort: 
+
+class pensMort:
     def __init__(self, sex, mortalityClass):
         self.sex = sex
         self.mortalityClass = mortalityClass
@@ -17,66 +18,64 @@ class pensMort:
         m_wb = openpyxl.load_workbook(m_file)
         pubG = m_wb['PubG.H-2010']
 
-        if self.mortalityClass == "General": 
+        if self.mortalityClass == "General":
             pubG = m_wb['PubG.H-2010']
-        
+
         if self.mortalityClass == "Safety":
             pubG = m_wb['PubS.H-2010']
 
-
-        
-         ## ET: convert excel into a dataframe
+        ## ET: convert excel into a dataframe
         df_pubG = pd.DataFrame(pubG.values)
         ## ET: clean data frame (i.e. remove extra empty columns, reset index)
         df_pubG = df_pubG.drop(df_pubG.index[range(3)])
-        df_pubG = df_pubG.drop(labels = [0,2], axis=1).reset_index()
-
-      
+        df_pubG = df_pubG.drop(labels=[0, 2], axis=1).reset_index()
 
         self.data = df_pubG
         self.mortTable = self.getMortalityTables()
-
-        
 
     def getMortalityTables(self):
         ## ET: convert data frame into dictionary
         ## index: age (number)
         ## key: mortality rate of employee(0 position), healthy retiree(1), disabled retiree(2), contingent survivor(3)(list of numbers)
         ## split into two dictionaries, one for female, one for male
-        
 
-        temp ={}
+        temp = {}
         if self.sex == "F":
             df_pubG = self.data.drop(self.data.iloc[:, 6:20], axis=1)
             df_pubG = df_pubG.rename(columns=df_pubG.iloc[1])
-            
-            df_pubG[['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]] = df_pubG[['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]].fillna(value=0)
-    
+
+            df_pubG[['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]] = df_pubG[
+                ['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]].fillna(value=0)
+
             for index, row in df_pubG.iterrows():
-                temp[row["Age"]] = [row["Employee"], row["Healthy Retiree"], row["Disabled Retiree"], row["Contingent Survivor"]]
+                temp[row["Age"]] = [row["Employee"], row["Healthy Retiree"], row["Disabled Retiree"],
+                                    row["Contingent Survivor"]]
             return temp
 
 
         elif self.sex == "M":
             df_pubG = self.data.iloc[:, np.r_[1, 7:11]].reset_index()
             df_pubG = df_pubG.rename(columns=df_pubG.iloc[1])
-            df_pubG[['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]] = df_pubG[['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]].fillna(value=0)
+            df_pubG[['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]] = df_pubG[
+                ['Healthy Retiree', "Disabled Retiree", "Contingent Survivor"]].fillna(value=0)
             for index, row in df_pubG.iterrows():
-                temp[row["Age"]] = [row["Employee"], row["Healthy Retiree"], row["Disabled Retiree"], row["Contingent Survivor"]]
+                temp[row["Age"]] = [row["Employee"], row["Healthy Retiree"], row["Disabled Retiree"],
+                                    row["Contingent Survivor"]]
             return temp
+
 
 class pensMember(object):
     def __init__(
-        self,
-        age,
-        sex,
-        service,
-        salary,
-        currentYear,
-        mortalityClass="General",
-        tier="1",
-        status="active",
-        id="*",
+            self,
+            age,
+            sex,
+            service,
+            salary,
+            currentYear,
+            mortalityClass="General",
+            tier="1",
+            status="active",
+            id="*",
     ):
         self.age = age
         self.sex = sex
@@ -105,12 +104,12 @@ class pensMember(object):
     def simulateCareerBackward(self):
         """Takes the current salary and service and projects a salary
         history backwards using the salaryGrowth value."""
-        
+
         year = self.currentYear
 
         if self.service > 1:
             for iyear in range(
-                self.currentYear - 1, self.currentYear - self.service, -1
+                    self.currentYear - 1, self.currentYear - self.service, -1
             ):
                 self.yearSalaryDict[year] = self.salaryHistory[0] / self.projectSalaryDelta()
                 year = year - 1
@@ -118,8 +117,6 @@ class pensMember(object):
         ## That first year was probably not a complete year.  Roll
         ## some dice and pick a random fraction of the year.
         self.salaryHistory[0] = random.random() * self.salaryHistory[0]
-
-
 
     def projectSalaryDelta(self):
         """Uses the age, service, and tier to project the change in pay
@@ -184,18 +181,17 @@ class pensMember(object):
     def doesMemberRetire(self):
         """TBD: What it sounds like"""
         if (
-            self.status == "retired"
-            or self.status == "deceased"
-            or self.status == "disabled"
+                self.status == "retired"
+                or self.status == "deceased"
+                or self.status == "disabled"
         ):
             return False
 
-
         if self.age >= 62 and self.service >= 15:
             if (
-                (self.age == 62 and random.random() > 0.4)
-                or (self.age > 62 and self.age < 70 and random.random() > 0.5)
-                or (self.age >= 70)
+                    (self.age == 62 and random.random() > 0.4)
+                    or (self.age > 62 and self.age < 70 and random.random() > 0.5)
+                    or (self.age >= 70)
             ):
                 return True
             elif self.service >= 20:
@@ -221,48 +217,43 @@ class pensMember(object):
                     return True
         return False
 
-        
     def getMortTable(self):
         """determine with mortality dictionary to use based on pensMember sex and mortality class"""
         if self.sex == "F":
             if self.mortalityClass == "General":
                 self.mortDict = pensMort("F", "General").mortTable
-            if self.mortalityClass == "Safety": 
+            if self.mortalityClass == "Safety":
                 self.mortDict = pensMort("F", "Safety").mortTable
 
         elif self.sex == "M":
             if self.mortalityClass == "General":
                 self.mortDict = pensMort("M", "General").mortTable
-            if self.mortalityClass == "Safety": 
+            if self.mortalityClass == "Safety":
                 self.mortDict = pensMort("M", "Safety").mortTable
 
     def doesMemberDie(self):
         """TBD: Check if member dies"""
 
-        if self.status == "active": 
+        if self.status == "active":
             if random.random() < self.mortDict[self.age][0]:
                 return True
 
         ## ET: Assuming every retiree is healthy for now 
-        elif self.status == "retired": 
+        elif self.status == "retired":
             if random.random() < self.mortDict[self.age][1]:
                 return True
         elif self.status == "deceased":
             return True
 
-
-
-
     def ageOneYear(self):
         """TBD: Age a year, get a raise, decide whether to separate or retire.
         Maybe die.  Change status and salary accordingly."""
 
-        #Should members' salary and service increase before or after separation/retire checks?
-        #If a person retires, should their service and salary not increase for that year? Or would it increase for the year and then stop?
+        # Should members' salary and service increase before or after separation/retire checks?
+        # If a person retires, should their service and salary not increase for that year? Or would it increase for the year and then stop?
 
         ## ET: Check for a change of status, then adjust the salary if
         ## it's still relevant.
-
 
         self.currentYear += 1
 
@@ -274,7 +265,6 @@ class pensMember(object):
             self.salary *= self.projectSalaryDelta()
             self.yearSalaryDict[self.currentYear] = self.salary
             self.pension = self.yearSalaryDict[self.currentYear] * 0.55
-
 
             if self.doesMemberSeparate():
                 self.status = "separated"
@@ -288,14 +278,15 @@ class pensMember(object):
             self.status = "deceased"
             self.salary = 0
 
-
     def print(self):
-        print("Member %s: Age: %.0f, Sex: %s, Class: %s, Tier, %s" % 
+        print("Member %s: Age: %.0f, Sex: %s, Class: %s, Tier, %s" %
               (self.id, self.age, self.sex, self.mortalityClass, self.tier))
-        print("BirthYear: %.0f, HireYear: %.0f, Service: %.0f, RetireYear: %.0f" % 
+        print("BirthYear: %.0f, HireYear: %.0f, Service: %.0f, RetireYear: %.0f" %
               (self.birthYear, self.hireYear, self.service, self.retireYear))
         print("Current Year: %.0f, Salary: %.0f, " %
               (self.currentYear, self.salary))
+
+
 #        self.pension = 0
 #        self.cola = 1.025
 #        self.discountrate = 1.07
@@ -305,26 +296,23 @@ class pensMember(object):
 #        self.getMortSex()
 
 
-
-
 class pensPop(object):
     def __init__(self, members=[]):
-        ## A list of member objects.
+        # A list of member objects.
         self.members = members
         self.startingSalary = 50000
         self.avgAge = 30
         self.simulatePopulation()
 
-
     def simulateMembers(
-        self,
-        N,
-        ageRange,
-        serviceRange,
-        avgSalary,
-        sex="*",
-        mortalityClass="General",
-        tier="1",
+            self,
+            N,
+            ageRange,
+            serviceRange,
+            avgSalary,
+            sex="*",
+            mortalityClass="General",
+            tier="1",
     ):
         """Generates N member objects with randomly distributed ages and
         services.  Sex is random, too, unless it's specified."""
@@ -449,40 +437,35 @@ class pensPop(object):
         for member in self.members:
             member.ageOneYear()
 
-
-
     def hireReplacements(self, pct=1.0):
         """TBD: Replace retired and separated workers to maintain headcount.
         If pct is less than one, only replace that proportion of the retired
         and separated."""
         counter = 0
-        for member in self.members: 
+        for member in self.members:
             if member.status == "retired" or member.status == "separated":
-                counter +=1
-        if random.random() < pct: 
-            self.members.extend(self.simulateMembers(counter, 
-            ageRange=(self.avgAge-5, self.avgAge+5), 
-            serviceRange=(0, 1), 
-            avgSalary=self.startingSalary))
+                counter += 1
+        if random.random() < pct:
+            self.members.extend(self.simulateMembers(counter,
+                                                     ageRange=(self.avgAge - 5, self.avgAge + 5),
+                                                     serviceRange=(0, 1),
+                                                     avgSalary=self.startingSalary))
 
-        else: 
-            self.members.extend(self.simulateMembers(counter * pct, 
-            ageRange=(self.avgAge-5, self.avgAge+5), 
-            serviceRange=(0, 1), 
-            avgSalary=self.startingSalary))
-
-        
-
+        else:
+            self.members.extend(self.simulateMembers(counter * pct,
+                                                     ageRange=(self.avgAge - 5, self.avgAge + 5),
+                                                     serviceRange=(0, 1),
+                                                     avgSalary=self.startingSalary))
 
     def addNewMembers(
-        self,
-        N,
-        ageRange,
-        serviceRange,
-        avgSalary,
-        sex="*",
-        mortalityClass="General",
-        tier="1",
+            self,
+            N,
+            ageRange,
+            serviceRange,
+            avgSalary,
+            sex="*",
+            mortalityClass="General",
+            tier="1",
     ):
         """TBD: New hires who aren't replacements."""
 
@@ -490,104 +473,76 @@ class pensPop(object):
         """TBD: Remove given number of members.  Favor removal of the
         younger members."""
 
-   
-
-
-    def print(self):
-        print("N: %.0f, %0.f active, %0.f retired" % 
+    def printReport(self):
+        print("N: %.0f members, %0.f active, %0.f retired" %
               (len(self.members),
                sum([m.status == 'active' for m in self.members]),
                sum([m.status == 'retired' for m in self.members])))
-        print("Average salary: %.0f" % 
-              (sum([m.salary for m in self.members])/len(self.members)))
-        
-    def active(self):
-        sum = 0
-        for member in self.members:
-            if member.status == "active":
-                sum += 1
-        return sum
-    
-    def retired(self):
-        sum = 0
-        for member in self.members:
-            if member.status == "retired":
-                sum += 1
-        return sum
-    
+        sal = sum([m.salary for m in self.members]) / len(self.members)
+        print("Average salary: $%s" %
+              '{:,}'.format(round(sal, 2)))
 
+    def calculateLiability(self, member):
+        """TBD: Estimate accrued liability for this member."""
 
+        ## Step 1: if person is active, estimate year of retirement
+        ## ET: created a deep copy of the member so not to effect the actual member's attribute
+        ## when generating annual report
+        simulateMemberLife = deepcopy(member)
 
-def calculateLiability(member):
-    """TBD: Estimate accrued liability for this member."""
+        yearsUntilRetirement = 0
+        if simulateMemberLife.status == "active":
+            while simulateMemberLife.status == "active":
+                simulateMemberLife.ageOneYear()
+                yearsUntilRetirement += 1
 
-    ## Step 1: if person is active, estimate year of retirement
-    ## ET: created a deep copy of the member so not to effect the actual member's attribute
-    ## when generating annual report 
-    simulateMemberLife = deepcopy(member)
+        ## Step 2: Estimate how many years of retirement this person
+        ## is likely to enjoy. (Or how many years left, for members
+        ## who are already retired.)
 
-    yearsUntilRetirement = 0
-    if simulateMemberLife.status == "active":
-        while simulateMemberLife.status == "active":
+        yearsOfRetirement = 0
+        if simulateMemberLife.status == "retired":
+            while simulateMemberLife.status != "deceased":
+                yearsOfRetirement += 1
+                simulateMemberLife.ageOneYear()
 
-            simulateMemberLife.ageOneYear()
-            yearsUntilRetirement += 1
+        liabilityPresentValue = 0
+        for i in range(yearsUntilRetirement + yearsOfRetirement):
+            ## Step 3: estimate retirement benefit earned
+            liability = member.pension * member.cola ** (i - 1)
 
-
-    ## Step 2: Estimate how many years of retirement this person
-    ## is likely to enjoy. (Or how many years left, for members
-    ## who are already retired.)
-
-    yearsOfRetirement = 0
-    if simulateMemberLife.status == "retired":
-        while simulateMemberLife.status != "deceased":
-            yearsOfRetirement += 1
-            simulateMemberLife.ageOneYear()
-
-    liabilityPresentValue = 0
-    for i in range(yearsUntilRetirement + yearsOfRetirement):
-        ## Step 3: estimate retirement benefit earned
-        liability = member.pension * member.cola ** (i - 1)
-
-
-
-        ## Step 4: Apply the discount rate for each of the years to
-        ## get the present value in the current year.
-        liabilityPresentValue = liabilityPresentValue + (liability) / (
-            member.discountrate ** i
+            ## Step 4: Apply the discount rate for each of the years to
+            ## get the present value in the current year.
+            liabilityPresentValue = liabilityPresentValue + (liability) / (
+                    member.discountrate ** i
             )
-    return liabilityPresentValue
- 
+        return liabilityPresentValue
 
-def calculateTotalLiability(pop):
-    """Calculate the present value of the liability, aka normal cost, for all the
-        members."""
+    def calculateTotalLiability(self, pop):
+        """Calculate the present value of the liability, aka normal cost, for all the
+            members."""
 
-    sum = 0
-    for m in pop.members:
-        sum += calculateLiability(m)
-    return sum
+        sum = 0
+        for m in pop.members:
+            sum += pop.calculateLiability(m)
+        return sum
 
-def getAnnualReport(pop): 
+    def getAnnualReport(pop):
 
-    """generate annual report with total members and total normal cost"""
-    report = []
+        """generate annual report with total members and total normal cost"""
+        report = []
 
-    for i in range(20):
-        for m in pop.members: 
-            if m.doesMemberDie(): 
-                pop.members.remove(m)
+        for i in range(20):
+            for m in pop.members:
+                if m.doesMemberDie():
+                    pop.members.remove(m)
 
-        report.append([len(pop.members), calculateTotalLiability(pop)])
-        pop.advanceOneYear()
-    return report
-
-
-        
+            report.append([len(pop.members), calculateTotalLiability(pop)])
+            pop.advanceOneYear()
+        return report
 
 
 ##################### TESTING FUNCTIONS ######################
-
 
 
 if __name__ == "__main__":
@@ -597,7 +552,7 @@ if __name__ == "__main__":
         for i in range(100000):
             if andy.doesMemberRetire():
                 counter += 1
-        print(counter) ## ET: should be around 60000
+        print(counter)  ## ET: should be around 60000
 
 
     def testdoesMemberSeparate():
@@ -606,34 +561,35 @@ if __name__ == "__main__":
             andy = pensMember(62, "M", 15, 1000, 2005)
             if andy.doesMemberSeparate():
                 counter += 1
-        print(counter) ## ET: should be around 600
+        print(counter)  ## ET: should be around 600
+
 
     def testdoesMemberDie():
         counter = 0
         andy = pensMember(18, "M", 15, 1000, 2005)
         for i in range(100000):
             if andy.doesMemberDie():
-                counter += 1 
-        print(counter) ## ET: should be around 30 
-    
+                counter += 1
+        print(counter)  ## ET: should be around 30
+
+
     def testcalculateLiability():
         andy = pensMember(20, "M", 15, 1000, 2005)
         print(calculateLiability(andy))
         print(andy.pension)
         andy.ageOneYear()
         print(calculateLiability(andy))
-    
-    def testcalculateTotalLiability(): 
+
+
+    def testcalculateTotalLiability():
         x = pensPop()
         x.advanceOneYear()
         print(calculateTotalLiability(x))
-    
+
+
     def testgetAnnualReport():
         x = pensPop()
         print(getAnnualReport(x))
-        
-
-
 
 
     def testAgeOneYear():
@@ -649,12 +605,9 @@ if __name__ == "__main__":
         print(m3_ageOneYear.service)
 
 
-
-
-
-testdoesMemberRetire()
-testcalculateLiability()
-testgetAnnualReport()
-testdoesMemberDie()
-testAgeOneYear()
-testcalculateTotalLiability()
+    testdoesMemberRetire()
+    testcalculateLiability()
+    testgetAnnualReport()
+    testdoesMemberDie()
+    testAgeOneYear()
+    testcalculateTotalLiability()
