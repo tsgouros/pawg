@@ -8,35 +8,58 @@ class pensPlan(object):
         self.currentYear = currentYear
 
         ## Discount rate choice probably belongs at the plan level
+        ##TJ: Need to check with Emily before setting this up ^
         self.discountRate = 0.07
 
         self.population = pensPop()
-        self.population.simulateMembers(N,
-                                        ageRange=(24, 65),
-                                        serviceRange=(1,30))
-        self.liability = self.population.calculateLiability(self.discountRate)
+        self.population.simulatePopulation()
+        ## TJ: I'm using simulatePopulation for now, but in the end we should use simulateMembers in order to control the
+        ## size of the population
+
+        self.liability = self.population.calculateTotalLiability(self.population)
         ## Start off 3/4 funded.
         self.fund = pensFund(0.75 * self.liability, self.currentYear)
+        ## TJ: Liability starts as zero, so the fund also starts with zero assets. If this
+        ## is not ideal, then maybe liability should have a hard-coded start value?
 
 
-    def annualReport(self, year):
+    def annualReport(self, year=0):
+        """" TODO: Make this work for any year"""
+
         #show number of active and retired members
-        print(self.population.active(), self.population.retired())
+        self.population.printReport()
         
         #Show current liability
-        print(self.calculateLiability(self.discountRate))
-        
+        print( "Current Liability: $%s" % '{:,}'.format(round(self.liability, 2)))
+
         #Show assets 
-        self.fund.print()
+        self.fund.printReport()
+
+        #UAL
+        assets = self.fund.ledger[self.currentYear]
+        print("Unfunded Liability: $%s" % '{:,}'.format(round((self.liability - sum(assets)), 2)))
 
     def advanceOneYear(self):
-        self.currentYear = self.population.advanceOneYear()
+        self.currentYear += 1
+        self.population.advanceOneYear()
         self.population.hireReplacements(1.0)
 
+        #Calculate benefits owed this year (TODO)
+        benefits = 0
+        print("Benefit payments amount to $%s" % '{:,}'.format(round(benefits, 2)))
+
         ## Calculate the increment of the normal cost.
-        premiumPayments = self.population.calculateLiability(self.discountRate) - self.liability
-        self.fund.payPremiums(premiumPayments)
+        newLiability = self.population.calculateTotalLiability(self.population)
+        premiums = newLiability - self.liability
+        self.liability = newLiability
+        ##TJ: updated self.liability here since it didn't change otherwise
+        print("Premium payments amount to $%s" % '{:,}'.format(round(premiums, 2)))
+
+        self.fund.payPremiums(premiums)
+        self.fund.payBenefits(benefits)
         self.fund.addInvestmentEarnings(self.currentYear)
+
+
 
 
     def adjustEmployment(self, N):
@@ -46,3 +69,14 @@ class pensPlan(object):
         else:
             self.population.layoffMembers(-N)
 
+
+if __name__ == "__main__":
+    plan = pensPlan(50, 2000)
+    print("Plan created!")
+    print("\nAnnual Report for %s:" % plan.currentYear)
+    plan.annualReport()
+    for i in range(4):
+        print("\nAdvancing a year...")
+        plan.advanceOneYear()
+        print("\nAnnual Report for %s:" % plan.currentYear)
+        plan.annualReport()
