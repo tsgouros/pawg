@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import openpyxl
 from pathlib import Path
+from copy import deepcopy
 
 class pensMort: 
     def __init__(self, sex, mortalityClass):
@@ -189,6 +190,7 @@ class pensMember(object):
         ):
             return False
 
+
         if self.age >= 62 and self.service >= 15:
             if (
                 (self.age == 62 and random.random() > 0.4)
@@ -271,6 +273,7 @@ class pensMember(object):
             self.service += 1
             self.salary *= self.projectSalaryDelta()
             self.yearSalaryDict[self.currentYear] = self.salary
+            self.pension = self.yearSalaryDict[self.currentYear] * 0.55
 
 
             if self.doesMemberSeparate():
@@ -279,49 +282,12 @@ class pensMember(object):
             elif self.doesMemberRetire():
                 self.status = "retired"
                 self.retireYear = self.currentYear
-                self.pension = self.yearSalaryDict[self.currentYear] * 0.55
                 self.salary = 0
 
         if self.doesMemberDie():
             self.status = "deceased"
             self.salary = 0
 
-
-    def calculateLiability(self):
-        """TBD: Estimate accrued liability for this member."""
-
-        ## Step 1: if person is active, estimate year of retirement
-
-        yearsUntilRetirement = 0
-        if self.status == "active":
-            while self.status == "active":
-                self.ageOneYear()
-                yearsUntilRetirement += 1
-        
-
-
-        ## Step 2: Estimate how many years of retirement this person
-        ## is likely to enjoy. (Or how many years left, for members
-        ## who are already retired.)
-
-        yearsOfRetirement = 0
-        if self.status == "retired":
-            while self.status != "deceased":
-                yearsOfRetirement += 1
-                self.ageOneYear()
-
-        liabilityPresentValue = 0
-        for i in range(yearsUntilRetirement + yearsOfRetirement):
-            ## Step 3: estimate retirement benefit earned
-            liability = self.pension * self.cola ** (i - 1)
-
-
-            ## Step 4: Apply the discount rate for each of the years to
-            ## get the present value in the current year.
-            liabilityPresentValue = liabilityPresentValue + (liability) / (
-                self.discountrate ** i
-            )
-        return liabilityPresentValue
 
     def print(self):
         print("Member %s: Age: %.0f, Sex: %s, Class: %s, Tier, %s" % 
@@ -524,29 +490,7 @@ class pensPop(object):
         """TBD: Remove given number of members.  Favor removal of the
         younger members."""
 
-    def calculateTotalLiability(self):
-        """Calculate the present value of the liability, aka normal cost, for all the
-        members."""
-
-        sum = 0
-        for m in self.members:
-            sum += m.calculateLiability()
-        return sum
-
-    def getAnnualReport(self): 
-
-        """generate annual report with total members and total normal cost"""
-        report = []
-
-        for i in range(20):
-            for m in self.members: 
-                if m == "deceased": 
-                    self.members.remove(m)
-            report.append([len(self.members), self.calculateTotalLiability()])
-            self.advanceOneYear()
-        return report
-
-
+   
 
 
     def print(self):
@@ -556,6 +500,72 @@ class pensPop(object):
                sum([m.status == 'retired' for m in self.members])))
         print("Average salary: %.0f" % 
               (sum([m.salary for m in self.members])/len(self.members)))
+
+
+
+def calculateLiability(member):
+    """TBD: Estimate accrued liability for this member."""
+
+    ## Step 1: if person is active, estimate year of retirement
+    ## ET: created a deep copy of the member so not to effect the actual member's attribute
+    ## when generating annual report 
+    simulateMemberLife = deepcopy(member)
+
+    yearsUntilRetirement = 0
+    if simulateMemberLife.status == "active":
+        while simulateMemberLife.status == "active":
+
+            simulateMemberLife.ageOneYear()
+            yearsUntilRetirement += 1
+
+
+    ## Step 2: Estimate how many years of retirement this person
+    ## is likely to enjoy. (Or how many years left, for members
+    ## who are already retired.)
+
+    yearsOfRetirement = 0
+    if simulateMemberLife.status == "retired":
+        while simulateMemberLife.status != "deceased":
+            yearsOfRetirement += 1
+            simulateMemberLife.ageOneYear()
+
+    liabilityPresentValue = 0
+    for i in range(yearsUntilRetirement + yearsOfRetirement):
+        ## Step 3: estimate retirement benefit earned
+        liability = member.pension * member.cola ** (i - 1)
+
+
+
+        ## Step 4: Apply the discount rate for each of the years to
+        ## get the present value in the current year.
+        liabilityPresentValue = liabilityPresentValue + (liability) / (
+            member.discountrate ** i
+            )
+    return liabilityPresentValue
+ 
+
+def calculateTotalLiability(pop):
+    """Calculate the present value of the liability, aka normal cost, for all the
+        members."""
+
+    sum = 0
+    for m in pop.members:
+        sum += calculateLiability(m)
+    return sum
+
+def getAnnualReport(pop): 
+
+    """generate annual report with total members and total normal cost"""
+    report = []
+
+    for i in range(20):
+        for m in pop.members: 
+            if m.doesMemberDie(): 
+                pop.members.remove(m)
+
+        report.append([len(pop.members), calculateTotalLiability(pop)])
+        pop.advanceOneYear()
+    return report
 
 
         
@@ -568,8 +578,8 @@ class pensPop(object):
 if __name__ == "__main__":
     def testdoesMemberRetire():
         counter = 0
+        andy = pensMember(62, "M", 15, 1000, 2005)
         for i in range(100000):
-            andy = pensMember(62, "M", 15, 1000, 2005)
             if andy.doesMemberRetire():
                 counter += 1
         print(counter) ## ET: should be around 60000
@@ -592,16 +602,22 @@ if __name__ == "__main__":
         print(counter) ## ET: should be around 30 
     
     def testcalculateLiability():
-        andy = pensMember(62, "M", 15, 1000, 2005)
-        print(andy.calculateLiability())
+        andy = pensMember(20, "M", 15, 1000, 2005)
+        print(calculateLiability(andy))
+        print(andy.pension)
+        andy.ageOneYear()
+        print(calculateLiability(andy))
     
     def testcalculateTotalLiability(): 
         x = pensPop()
-        print(x.calculateTotalLiability())
+        x.advanceOneYear()
+        print(calculateTotalLiability(x))
     
     def testgetAnnualReport():
         x = pensPop()
-        print(x.getAnnualReport())
+        print(getAnnualReport(x))
+        
+
 
 
 
@@ -618,7 +634,12 @@ if __name__ == "__main__":
         print(m3_ageOneYear.service)
 
 
+
+
+
+testdoesMemberRetire()
+testcalculateLiability()
 testgetAnnualReport()
 testdoesMemberDie()
-testdoesMemberRetire()
 testAgeOneYear()
+testcalculateTotalLiability()
