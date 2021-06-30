@@ -434,8 +434,15 @@ class pensPop(object):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
         or separate. """
+        retirementBenefit = 0 
         for member in self.members:
             member.ageOneYear()
+            if member.status == "retired": 
+                retirementBenefit += member.pension
+        return {'benefit': retirementBenefit}
+
+
+        
 
     def hireReplacements(self, pct=1.0):
         """TBD: Replace retired and separated workers to maintain headcount.
@@ -604,10 +611,19 @@ if __name__ == "__main__":
         print(m2_ageOneYear.age)
         print(m3_ageOneYear.service)
 
+    def testAdvanceOneYear():
+        x = pensPop()
+        for i in range(10):
+            print(x.advanceOneYear())
 
-    testdoesMemberRetire()
-    testcalculateLiability()
-    testgetAnnualReport()
-    testdoesMemberDie()
-    testAgeOneYear()
-    testcalculateTotalLiability()
+
+    
+
+
+    # testdoesMemberRetire()
+    # testcalculateLiability()
+    # testgetAnnualReport()
+    # testdoesMemberDie()
+    # testAgeOneYear()
+    # testcalculateTotalLiability()
+    testAdvanceOneYear()
