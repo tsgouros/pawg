@@ -439,7 +439,7 @@ class pensPop(object):
             member.ageOneYear()
             if member.status == "retired": 
                 retirementBenefit += member.pension
-        return retirementBenefit
+        return f"benefit : {retirementBenefit}"
 
 
         
@@ -611,10 +611,19 @@ if __name__ == "__main__":
         print(m2_ageOneYear.age)
         print(m3_ageOneYear.service)
 
+    def testAdvanceOneYear():
+        x = pensPop()
+        for i in range(10):
+            print(x.advanceOneYear())
 
-    testdoesMemberRetire()
-    testcalculateLiability()
-    testgetAnnualReport()
-    testdoesMemberDie()
-    testAgeOneYear()
-    testcalculateTotalLiability()
+
+    
+
+
+    # testdoesMemberRetire()
+    # testcalculateLiability()
+    # testgetAnnualReport()
+    # testdoesMemberDie()
+    # testAgeOneYear()
+    # testcalculateTotalLiability()
+    testAdvanceOneYear()
