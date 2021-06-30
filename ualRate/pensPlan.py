@@ -17,6 +17,7 @@ class pensPlan(object):
         ## size of the population
 
         self.liability = self.population.calculateTotalLiability(self.population)
+
         ## Start off 3/4 funded.
         self.fund = pensFund(0.75 * self.liability, self.currentYear)
         ## TJ: Liability starts as zero, so the fund also starts with zero assets. If this
@@ -37,16 +38,18 @@ class pensPlan(object):
 
         #UAL
         assets = self.fund.ledger[self.currentYear]
-        print("Unfunded Liability: $%s" % '{:,}'.format(round((self.liability - sum(assets)), 2)))
+        if self.liability - sum(assets) > 0:
+            print("Unfunded Liability: $%s" % max('{:,}'.format(round((self.liability - sum(assets)), 2))))
+        else:
+            print("Unfunded Liability: $0")
 
     def advanceOneYear(self):
         self.currentYear += 1
-        self.population.advanceOneYear()
-        self.population.hireReplacements(1.0)
+        info = self.population.advanceOneYear()
+        self.population.hireReplacements(info['replace'], 1.0)
 
         #Calculate benefits owed this year (TODO)
-        benefits = 0
-        print("Benefit payments amount to $%s" % '{:,}'.format(round(benefits, 2)))
+        print("Benefit payments amount to $%s" % '{:,}'.format(round(info['benefit'], 2)))
 
         ## Calculate the increment of the normal cost.
         newLiability = self.population.calculateTotalLiability(self.population)
@@ -56,7 +59,7 @@ class pensPlan(object):
         print("Premium payments amount to $%s" % '{:,}'.format(round(premiums, 2)))
 
         self.fund.payPremiums(premiums)
-        self.fund.payBenefits(benefits)
+        self.fund.payBenefits(info['benefit'])
         self.fund.addInvestmentEarnings(self.currentYear)
 
 
@@ -75,7 +78,7 @@ if __name__ == "__main__":
     print("Plan created!")
     print("\nAnnual Report for %s:" % plan.currentYear)
     plan.annualReport()
-    for i in range(4):
+    for i in range(50):
         print("\nAdvancing a year...")
         plan.advanceOneYear()
         print("\nAnnual Report for %s:" % plan.currentYear)
