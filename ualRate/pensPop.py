@@ -434,8 +434,15 @@ class pensPop(object):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
         or separate. """
+        retirementBenefit = 0 
         for member in self.members:
             member.ageOneYear()
+            if member.status == "retired": 
+                retirementBenefit += member.pension
+        return retirementBenefit
+
+
+        
 
     def hireReplacements(self, pct=1.0):
         """TBD: Replace retired and separated workers to maintain headcount.
