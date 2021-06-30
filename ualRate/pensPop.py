@@ -439,7 +439,7 @@ class pensPop(object):
             member.ageOneYear()
             if member.status == "retired": 
                 retirementBenefit += member.pension
-        return f"benefit : {retirementBenefit}"
+        return {'benefit': retirementBenefit}
 
 
         
