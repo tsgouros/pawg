@@ -434,35 +434,30 @@ class pensPop(object):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
         or separate. """
-        retirementBenefit = 0 
+        retirementBenefit = 0
+        replacements = 0
         for member in self.members:
+            wasActive = False
+            if member.status == "active":
+                wasActive = True
             member.ageOneYear()
-            if member.status == "retired": 
+            if member.status == "retired":
                 retirementBenefit += member.pension
-        return {'benefit': retirementBenefit}
+                if wasActive:
+                    replacements += 1
+            elif member.status != "active" and wasActive:
+                replacements += 1
 
+        return {'benefit': retirementBenefit, 'replace': replacements}
 
-        
-
-    def hireReplacements(self, pct=1.0):
+    def hireReplacements(self, N, pct=1.0):
         """TBD: Replace retired and separated workers to maintain headcount.
         If pct is less than one, only replace that proportion of the retired
         and separated."""
-        counter = 0
-        for member in self.members:
-            if member.status == "retired" or member.status == "separated":
-                counter += 1
-        if random.random() < pct:
-            self.members.extend(self.simulateMembers(counter,
-                                                     ageRange=(self.avgAge - 5, self.avgAge + 5),
-                                                     serviceRange=(0, 1),
-                                                     avgSalary=self.startingSalary))
-
-        else:
-            self.members.extend(self.simulateMembers(counter * pct,
-                                                     ageRange=(self.avgAge - 5, self.avgAge + 5),
-                                                     serviceRange=(0, 1),
-                                                     avgSalary=self.startingSalary))
+        self.members.extend(self.simulateMembers(int(N * pct),
+                                                 ageRange=(self.avgAge - 5, self.avgAge + 5),
+                                                 serviceRange=(0, 1),
+                                                 avgSalary=self.startingSalary))
 
     def addNewMembers(
             self,
@@ -481,10 +476,12 @@ class pensPop(object):
         younger members."""
 
     def printReport(self):
-        print("N: %.0f members, %0.f active, %0.f retired" %
+        print("N: %.0f members, %0.f active, %0.f retired, %0.f separated, %0.f deceased" %
               (len(self.members),
                sum([m.status == 'active' for m in self.members]),
-               sum([m.status == 'retired' for m in self.members])))
+               sum([m.status == 'retired' for m in self.members]),
+               sum([m.status == 'separated' for m in self.members]),
+               sum([m.status == 'deceased' for m in self.members])))
         sal = sum([m.salary for m in self.members]) / len(self.members)
         print("Average salary: $%s" %
               '{:,}'.format(round(sal, 2)))
@@ -611,13 +608,11 @@ if __name__ == "__main__":
         print(m2_ageOneYear.age)
         print(m3_ageOneYear.service)
 
+
     def testAdvanceOneYear():
         x = pensPop()
         for i in range(10):
             print(x.advanceOneYear())
-
-
-    
 
 
     # testdoesMemberRetire()
