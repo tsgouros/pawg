@@ -29,14 +29,26 @@ class pensFund(object):
 		print(self.annualReport())
 
 	def payPremiums(self, premiums):
-		self.equity += self.pcts[0] * premiums
-		self.bonds += self.pcts[1] * premiums
-		self.other += self.pcts[2] * premiums
+		total = self.equity + self.bonds + self.other
+		if total == 0:
+			self.equity += self.pcts[0] * premiums
+			self.bonds += self.pcts[1] * premiums
+			self.other += self.pcts[2] * premiums
+		else:
+			self.equity += (self.equity/total) * premiums
+			self.bonds += (self.bonds/total) * premiums
+			self.other += (self.other/total) * premiums
 
 	def payBenefits(self, benefits):
-		self.equity -= self.pcts[0] * benefits
-		self.bonds -= self.pcts[1] * benefits
-		self.other -= self.pcts[2] * benefits
+		total = self.equity + self.bonds + self.other
+		if total == 0:
+			self.equity += self.pcts[0] * benefits
+			self.bonds += self.pcts[1] * benefits
+			self.other += self.pcts[2] * benefits
+		else:
+			self.equity -= (self.equity/total) * benefits
+			self.bonds -= (self.bonds/total) * benefits
+			self.other -= (self.other/total) * benefits
 
 	def addInvestmentEarnings(self, year):
 		e = np.random.normal(0.06, 0.03)
@@ -75,8 +87,3 @@ def testFund():
 
 if __name__ == "__main__":
 	testFund()
-		
-		
-    
-    
-  
