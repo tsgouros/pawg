@@ -72,6 +72,7 @@ class pensMember(object):
             service,
             salary,
             currentYear,
+            discountrate=1.07,
             mortalityClass="General",
             tier="1",
             status="active",
@@ -89,9 +90,9 @@ class pensMember(object):
         self.birthYear = currentYear - age
         self.retireYear = 0
         self.hireYear = currentYear - service
-        self.pension = 0
+        self.pension = self.salary * 0.55
         self.cola = 1.025
-        self.discountrate = 1.07
+        self.discountrate = discountrate
         self.mortDict = 0
         self.yearSalaryDict = {}
         self.salaryHistory = deque([salary])
@@ -100,6 +101,7 @@ class pensMember(object):
 
         if self.id == "*":
             self.id = "%0.6x" % random.randint(1, pow(16, 6))
+    
 
     def simulateCareerBackward(self):
         """Takes the current salary and service and projects a salary
@@ -302,6 +304,7 @@ class pensPop(object):
         self.members = members
         self.startingSalary = 50000
         self.avgAge = 30
+        self.sampleSize = 10
         self.simulatePopulation()
 
     def simulateMembers(
@@ -325,6 +328,7 @@ class pensPop(object):
                     chosenSex = "F"
             else:
                 chosenSex = sex
+
             out.append(
                 pensMember(
                     random.randint(ageRange[0], ageRange[1]),
@@ -342,6 +346,90 @@ class pensPop(object):
     def simulatePopulation(self):
         """Generates a collection of plan members.  This can be taken from
         the table of population demographics in any valuation report."""
+
+        m_file = Path('..', 'ageServiceTables', 'age-service-distribution.xlsx')
+        m_wb = openpyxl.load_workbook(m_file, data_only = True)
+        asd = m_wb["Cal-T"]
+        df_asd = pd.DataFrame(asd.values)
+        df_asd = df_asd.rename(columns=df_asd.iloc[0])
+        df_asd = df_asd.set_index('age')
+        proportion = []
+        y = 0
+        ageServiceDict = {}
+        total = df_asd["total"]["total"]
+        df_asd = df_asd.drop(index = ["age", "total"], columns = ["total"] )
+        df_asd = df_asd.applymap(lambda x: x / total)
+
+
+        for index, row in df_asd.iterrows(): 
+            ageR = index.split(",")
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[0]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(0, 1), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[1]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(2, 4), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[2]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(5, 9), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[3]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(10, 14), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[4]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(15, 19), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[5]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(20, 24), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[6]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(25, 29), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[7]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(30, 34), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[8]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(35, 39), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[9]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(40, 44), avgSalary=7000
+                )
+            )
+
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * row[10]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(45, 60), avgSalary=7000
+                )
+            )
+
+
 
         self.members.extend(
             self.simulateMembers(
@@ -528,7 +616,7 @@ class pensPop(object):
     def calculateTotalLiability(self, pop):
         """Calculate the present value of the liability, aka normal cost, for all the
             members."""
-
+       
         sum = 0
         for m in pop.members:
             sum += pop.calculateLiability(m)
@@ -581,11 +669,12 @@ if __name__ == "__main__":
 
 
     def testcalculateLiability():
+        x = pensPop()
         andy = pensMember(20, "M", 15, 1000, 2005)
-        print(calculateLiability(andy))
+        print(x.calculateLiability(andy))
         print(andy.pension)
         andy.ageOneYear()
-        print(calculateLiability(andy))
+        print(x.calculateLiability(andy))
 
 
     def testcalculateTotalLiability():
@@ -621,9 +710,9 @@ if __name__ == "__main__":
 
 
     # testdoesMemberRetire()
-    # testcalculateLiability()
+    testcalculateLiability()
     # testgetAnnualReport()
     # testdoesMemberDie()
     # testAgeOneYear()
     # testcalculateTotalLiability()
-    testAdvanceOneYear()
+    # testAdvanceOneYear()
