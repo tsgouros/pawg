@@ -72,7 +72,6 @@ class pensMember(object):
             service,
             salary,
             currentYear,
-            discountrate=1.07,
             mortalityClass="General",
             tier="1",
             status="active",
@@ -92,7 +91,6 @@ class pensMember(object):
         self.hireYear = currentYear - service
         self.pension = self.salary * 0.55
         self.cola = 1.025
-        self.discountrate = discountrate
         self.mortDict = 0
         self.yearSalaryDict = {}
         self.salaryHistory = deque([salary])
@@ -342,6 +340,17 @@ class pensPop(object):
             )
 
         return out
+    
+    def estimateSalary(self, serviceYears): 
+        salaryGrowth = 0
+        if serviceYears <= 15: 
+            salarayGrowth = 55000 * serviceYears * np.random.normal(2000, 1500)
+        elif serviceYears <= 25: 
+            salaryGrowth = 50000 * serviceYears * np.random.normal(1000, 1500)
+        else: 
+            salaryGrowth = 50000 * 15 * np.random.normal(2000, 1500)  + 50000 * 10 * np.random.normal(1000, 1500)
+        return salaryGrowth
+
 
     def simulatePopulation(self):
         """Generates a collection of plan members.  This can be taken from
@@ -361,73 +370,78 @@ class pensPop(object):
         df_asd = df_asd.applymap(lambda x: x / total)
 
 
+
+
         for index, row in df_asd.iterrows(): 
             ageR = index.split(",")
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[0]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(0, 1), avgSalary=7000
+                    round(self.sampleSize * row[0]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(0, 1), avgSalary= self.estimateSalary(1) 
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[1]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(2, 4), avgSalary=7000
+                    round(self.sampleSize * row[1]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(2, 4), avgSalary = self.estimateSalary(3)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[2]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(5, 9), avgSalary=7000
+                    round(self.sampleSize * row[2]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(5, 9), avgSalary=self.estimateSalary(7)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[3]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(10, 14), avgSalary=7000
+                    round(self.sampleSize * row[3]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(10, 14), avgSalary= self.estimateSalary(12)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[4]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(15, 19), avgSalary=7000
+                    round(self.sampleSize * row[4]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(15, 19), avgSalary=self.estimateSalary(17)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[5]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(20, 24), avgSalary=7000
+                    round(self.sampleSize * row[5]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(20, 24), avgSalary= self.estimateSalary(22)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[6]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(25, 29), avgSalary=7000
+                    round(self.sampleSize * row[6]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(25, 29), avgSalary=self.estimateSalary(27)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[7]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(30, 34), avgSalary=7000
+                    round(self.sampleSize * row[7]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(30, 34), avgSalary=self.estimateSalary(32)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[8]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(35, 39), avgSalary=7000
+                    round(self.sampleSize * row[8]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(35, 39), avgSalary=self.estimateSalary(37)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[9]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(40, 44), avgSalary=7000
+                    round(self.sampleSize * row[9]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(40, 44), avgSalary=self.estimateSalary(42)
                 )
             )
 
             self.members.extend(
                 self.simulateMembers(
-                    round(self.sampleSize * row[10]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(45, 60), avgSalary=7000
+                    round(self.sampleSize * row[10]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(45, 60), avgSalary=self.estimateSalary(47)
                 )
             )
+            
+        
+
 
 
 
@@ -574,7 +588,7 @@ class pensPop(object):
         print("Average salary: $%s" %
               '{:,}'.format(round(sal, 2)))
 
-    def calculateLiability(self, member):
+    def calculateLiability(self, member, discountrate, cola):
         """TBD: Estimate accrued liability for this member."""
 
         ## Step 1: if person is active, estimate year of retirement
@@ -601,33 +615,33 @@ class pensPop(object):
         liabilityPresentValue = 0
         for i in range(yearsUntilRetirement + yearsOfRetirement):
             ## Step 3: estimate retirement benefit earned
-            liability = member.pension * member.cola ** (i - 1)
+            liability = member.pension * cola ** (i - 1)
 
             ## Step 4: Apply the discount rate for each of the years to
             ## get the present value in the current year.
             liabilityPresentValue = liabilityPresentValue + (liability) / (
-                    member.discountrate ** i
+                    discountrate ** i
             )
         return liabilityPresentValue
 
-    def calculateTotalLiability(self, pop):
+    def calculateTotalLiability(self):
         """Calculate the present value of the liability, aka normal cost, for all the
             members."""
        
         sum = 0
-        for m in pop.members:
-            sum += pop.calculateLiability(m)
+        for m in self.members:
+            sum += self.calculateLiability(m, 1.07, 1.02)
         return sum
 
-    def getAnnualReport(pop):
+    def getAnnualReport(self):
 
         """generate annual report with total members and total normal cost"""
         report = []
 
         for i in range(20):
-            for m in pop.members:
-                if m.doesMemberDie():
-                    pop.members.remove(m)
+            for m in self.members:
+                if self.doesMemberDie():
+                    self.members.remove(m)
 
             report.append([len(pop.members), calculateTotalLiability(pop)])
             pop.advanceOneYear()
@@ -677,7 +691,7 @@ if __name__ == "__main__":
     def testcalculateTotalLiability():
         x = pensPop()
         x.advanceOneYear()
-        print(calculateTotalLiability(x))
+        print(x.calculateTotalLiability())
 
 
     def testgetAnnualReport():
@@ -705,9 +719,9 @@ if __name__ == "__main__":
 
 
     # testdoesMemberRetire()
-    testcalculateLiability()
+    # testcalculateLiability()
     # testgetAnnualReport()
     # testdoesMemberDie()
     # testAgeOneYear()
-    # testcalculateTotalLiability()
+    testcalculateTotalLiability()
     # testAdvanceOneYear()
