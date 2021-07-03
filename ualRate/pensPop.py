@@ -342,14 +342,15 @@ class pensPop(object):
         return out
     
     def estimateSalary(self, serviceYears): 
-        salaryGrowth = 0
+        """Estimates a starting salary in 2020 dollars."""
+
         if serviceYears <= 15: 
-            salarayGrowth = 55000 * serviceYears * np.random.normal(2000, 1500)
+            salary = 51000 + serviceYears * 1600 + np.random.normal(0, 2500)
         elif serviceYears <= 25: 
-            salaryGrowth = 50000 * serviceYears * np.random.normal(1000, 1500)
+            salary = self.estimateSalary(15) + (serviceYears - 15) * 800 + np.random.normal(0, 2500)
         else: 
-            salaryGrowth = 50000 * 15 * np.random.normal(2000, 1500)  + 50000 * 10 * np.random.normal(1000, 1500)
-        return salaryGrowth
+            salary = self.estimateSalary(25) + (serviceYears - 25) * np.random.normal(500, 100)
+        return salary
 
 
     def simulatePopulation(self):
