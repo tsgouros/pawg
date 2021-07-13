@@ -297,13 +297,14 @@ class pensMember(object):
 
 
 class pensPop(object):
-    def __init__(self, members=[]):
+    def __init__(self, members=[], discountRate=0.07):
         # A list of member objects.
         self.members = members
         self.startingSalary = 50000
         self.avgAge = 30
         self.sampleSize = 10
         self.simulatePopulation()
+        self.discount = 1+discountRate
 
     def simulateMembers(
             self,
@@ -631,7 +632,7 @@ class pensPop(object):
        
         sum = 0
         for m in self.members:
-            sum += self.calculateLiability(m, 1.07, 1.02)
+            sum += self.calculateLiability(m, self.discount, 1.02)
         return sum
 
     def getAnnualReport(self):
@@ -726,3 +727,4 @@ if __name__ == "__main__":
     # testAgeOneYear()
     testcalculateTotalLiability()
     # testAdvanceOneYear()
+
