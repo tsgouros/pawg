@@ -90,7 +90,7 @@ class pensMember(object):
         self.retireYear = 0
         self.hireYear = currentYear - service
         self.pension = self.salary * 0.55
-        self.cola = 1.025
+        self.cola = 1.025 #inflation, set to 1 to neutralize
         self.mortDict = 0
         self.yearSalaryDict = {}
         self.salaryHistory = deque([salary])
@@ -139,6 +139,8 @@ class pensMember(object):
             out = 1.0374
         elif self.age >= 50:
             out = 1.035
+
+        #out -= 0.035 #to set inflation to 0
 
         return out
 
@@ -649,6 +651,15 @@ class pensPop(object):
             pop.advanceOneYear()
         return report
 
+    def getAvgService(self):
+        sum = 0
+        count = 0
+        for m in self.members:
+            if m.status == "active":
+                count += 1
+                sum += m.service
+        return sum/count
+
 
 ##################### TESTING FUNCTIONS ######################
 
@@ -727,4 +738,3 @@ if __name__ == "__main__":
     # testAgeOneYear()
     testcalculateTotalLiability()
     # testAdvanceOneYear()
-
