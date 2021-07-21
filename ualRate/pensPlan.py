@@ -188,7 +188,7 @@ def getModelData(volatility, employmentGrowth, contributionRate, size=50, years=
                                    filename=subdir))
 
         # Console counter for user to see how far the script is progressing (it takes a long time!)
-        print(i, end=" ")
+        print(i, end = " ")
 
     print("\nFinished running models. Averaging the data...")
 
