@@ -321,7 +321,7 @@ class pensPop(object):
         """Generates N member objects with randomly distributed ages and
         services.  Sex is random, too, unless it's specified."""
         out = []
-        for i in range(0, N):
+        for i in range(0, int(N)):
             if sex == "*":
                 if random.random() > 0.5:
                     chosenSex = "M"
