@@ -315,6 +315,7 @@ class pensPop(object):
             sex="*",
             mortalityClass="General",
             tier="1",
+            status ="active"
     ):
         """Generates N member objects with randomly distributed ages and
         services.  Sex is random, too, unless it's specified."""
@@ -337,6 +338,7 @@ class pensPop(object):
                     2021,
                     mortalityClass=mortalityClass,
                     tier=tier,
+                    status = status
                 )
             )
 
@@ -445,16 +447,16 @@ class pensPop(object):
         
 
 
-
+    ## ET: add retired members 
 
         self.members.extend(
             self.simulateMembers(
-                1, ageRange=(20, 24), serviceRange=(0, 4), avgSalary=71362
+                5, ageRange=(55, 60), serviceRange=(20, 25), avgSalary=6500, status = "retired"
             )
         )
         self.members.extend(
             self.simulateMembers(
-                5, ageRange=(25, 29), serviceRange=(0, 4), avgSalary=73683
+                5, ageRange=(55, 60), serviceRange=(20, 25), avgSalary=6000, status = "retired"
             )
         )
 
