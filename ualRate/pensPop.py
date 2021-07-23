@@ -372,6 +372,7 @@ class pensPop(object):
         y = 0
         ageServiceDict = {}
         total = df_asd["total"]["total"]
+        total_retired = 41192
         df_asd = df_asd.drop(index = ["age", "total"], columns = ["total"] )
         df_asd = df_asd.applymap(lambda x: x / total)
 
@@ -445,98 +446,18 @@ class pensPop(object):
                     round(self.sampleSize * row[10]), ageRange=(int(ageR[0]), int(ageR[1])), serviceRange=(45, 60), avgSalary=self.estimateSalary(47)
                 )
             )
+
+            ## retired members 
+            self.members.extend(
+                self.simulateMembers(
+                    round(self.sampleSize * (total_retired/(total+total_retired))), ageRange=(55,60), serviceRange=(25, 30), avgSalary=random.randint(5500, 6000), status = "retired"
+                )
+            )
+
+            
             
         
 
-
-    ## ET: add retired members 
-
-        self.members.extend(
-            self.simulateMembers(
-                5, ageRange=(55, 60), serviceRange=(20, 25), avgSalary=6500, status = "retired"
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                5, ageRange=(55, 60), serviceRange=(20, 25), avgSalary=6000, status = "retired"
-            )
-        )
-
-        self.members.extend(
-            self.simulateMembers(
-                1, ageRange=(25, 29), serviceRange=(5, 9), avgSalary=73683
-            )
-        )
-
-        self.members.extend(
-            self.simulateMembers(
-                6, ageRange=(30, 34), serviceRange=(0, 4), avgSalary=80728
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                1, ageRange=(30, 34), serviceRange=(5, 9), avgSalary=84728
-            )
-        )
-
-        self.members.extend(
-            self.simulateMembers(
-                2, ageRange=(35, 39), serviceRange=(0, 4), avgSalary=84728
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                1, ageRange=(35, 39), serviceRange=(5, 9), avgSalary=94728
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                7, ageRange=(35, 39), serviceRange=(10, 14), avgSalary=115728
-            )
-        )
-
-        self.members.extend(
-            self.simulateMembers(
-                2, ageRange=(40, 44), serviceRange=(0, 4), avgSalary=92728
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                2, ageRange=(40, 44), serviceRange=(5, 9), avgSalary=94728
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                10, ageRange=(40, 44), serviceRange=(10, 14), avgSalary=112728
-            )
-        )
-
-        self.members.extend(
-            self.simulateMembers(
-                1, ageRange=(45, 49), serviceRange=(5, 9), avgSalary=94730
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                4, ageRange=(45, 49), serviceRange=(10, 14), avgSalary=110730
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                1, ageRange=(45, 49), serviceRange=(15, 19), avgSalary=140130
-            )
-        )
-
-        self.members.extend(
-            self.simulateMembers(
-                2, ageRange=(45, 49), serviceRange=(10, 14), avgSalary=120730
-            )
-        )
-        self.members.extend(
-            self.simulateMembers(
-                1, ageRange=(45, 49), serviceRange=(15, 19), avgSalary=124730
-            )
-        )
 
     def advanceOneYear(self):
         """TBD: Advance the population by a year -- increase everyone's age
