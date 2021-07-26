@@ -43,11 +43,7 @@ class pensFund(object):
 
     def payBenefits(self, benefits):
         total = self.equity + self.bonds + self.other
-        if total == 0:
-            self.equity += self.pcts[0] * benefits
-            self.bonds += self.pcts[1] * benefits
-            self.other += self.pcts[2] * benefits
-        else:
+        if total > 0:
             self.equity -= (self.equity / total) * benefits
             self.bonds -= (self.bonds / total) * benefits
             self.other -= (self.other / total) * benefits
