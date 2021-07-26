@@ -530,6 +530,31 @@ class pensPop(object):
                 )
             )
 
+            s = np.random.normal(4000, 4000)
+            if s < 2000:
+                s = random.uniform(2000, 4000)
+
+            age_lower = 65
+            age_upper = 70
+
+            for i in range(9):
+
+                self.members.extend(
+                    self.simulateMembers(
+                        round(
+                            self.sampleSize
+                            * (total_retired / (total + total_retired) * (0.2 ** i))
+                        ),
+                        ageRange=(age_lower, age_upper),
+                        serviceRange=(25, 30),
+                        avgSalary=s,
+                        status="retired",
+                    )
+                )
+
+                age_lower += 5
+                age_upper += 5
+
     def advanceOneYear(self):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
@@ -648,8 +673,8 @@ class pensPop(object):
                 if self.doesMemberDie():
                     self.members.remove(m)
 
-            report.append([len(pop.members), calculateTotalLiability(pop)])
-            pop.advanceOneYear()
+            report.append([len(self.members), self.calculateTotalLiability()])
+            self.advanceOneYear()
         return report
 
     def getAvgService(self):
@@ -706,7 +731,7 @@ if __name__ == "__main__":
 
     def testgetAnnualReport():
         x = pensPop()
-        print(getAnnualReport(x))
+        print(x.getAnnualReport())
 
     def testAgeOneYear():
         m1 = pensMember(20, "M", 2, 500, 2010)
