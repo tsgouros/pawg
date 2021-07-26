@@ -659,6 +659,8 @@ class pensPop(object):
             if m.status == "active":
                 count += 1
                 sum += m.service
+        if count == 0:
+            return 0
         return sum / count
 
 
