@@ -6,6 +6,7 @@ import pandas as pd
 import openpyxl
 from pathlib import Path
 from copy import deepcopy
+from matplotlib import pyplot as plt
 
 
 class pensMort:
@@ -398,7 +399,7 @@ class pensPop(object):
         y = 0
         ageServiceDict = {}
         total = df_asd["total"]["total"]
-        total_retired = 41192
+        total_retired = 270835
         df_asd = df_asd.drop(index=["age", "total"], columns=["total"])
         df_asd = df_asd.applymap(lambda x: x / total)
 
@@ -530,30 +531,30 @@ class pensPop(object):
                 )
             )
 
-            s = np.random.normal(4000, 4000)
-            if s < 2000:
-                s = random.uniform(2000, 4000)
+        s = np.random.normal(4000, 4000)
+        if s < 2000:
+            s = random.uniform(2000, 4000)
 
-            age_lower = 65
-            age_upper = 70
+        age_lower = 65
+        age_upper = 70
 
-            for i in range(9):
+        for i in range(9):
 
-                self.members.extend(
-                    self.simulateMembers(
-                        round(
-                            self.sampleSize
-                            * (total_retired / (total + total_retired) * (0.2 ** i))
-                        ),
-                        ageRange=(age_lower, age_upper),
-                        serviceRange=(25, 30),
-                        avgSalary=s,
-                        status="retired",
-                    )
+            self.members.extend(
+                self.simulateMembers(
+                    round(
+                        self.sampleSize
+                        * (total_retired / (total + total_retired) * (0.93 ** i))
+                    ),
+                    ageRange=(age_lower, age_upper),
+                    serviceRange=(25, 30),
+                    avgSalary=s,
+                    status="retired",
                 )
+            )
 
-                age_lower += 5
-                age_upper += 5
+            age_lower += 5
+            age_upper += 5
 
     def advanceOneYear(self):
         """TBD: Advance the population by a year -- increase everyone's age
@@ -600,9 +601,23 @@ class pensPop(object):
     ):
         """TBD: New hires who aren't replacements."""
 
+        self.members.extend(
+            self.simulateMembers(
+                N,
+                ageRange=(25, 35),
+                serviceRange=(0, 5),
+                avgSalary=self.estimateSalary(2),
+            )
+        )
+
     def layoffMembers(self, N):
         """TBD: Remove given number of members.  Favor removal of the
         younger members."""
+
+        for i in range(N):
+            for m in self.members:
+                if m.age >= 20 and m.age <= 25:
+                    self.members.remove(m)
 
     def printReport(self):
         print(
@@ -750,10 +765,21 @@ if __name__ == "__main__":
         for i in range(10):
             print(x.advanceOneYear())
 
+    def testSimulatePopulation():
+        total_retired = 270835
+        counter = []
+        for i in range(9):
+            total_retired = total_retired * (0.93 ** i)
+            counter.append(total_retired)
+
+        plt.plot(counter)
+        plt.show()
+
     # testdoesMemberRetire()
     # testcalculateLiability()
     # testgetAnnualReport()
     # testdoesMemberDie()
     # testAgeOneYear()
     testcalculateTotalLiability()
+    testSimulatePopulation()
     # testAdvanceOneYear()
