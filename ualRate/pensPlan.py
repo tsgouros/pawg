@@ -37,6 +37,9 @@ class pensPlan(object):
         # Show assets
         self.fund.printReport()
 
+        # Show total salary
+        self.population.calculateTotalSalary()
+
         # UAL
         if self.ual > 0:
             print("Unfunded Liability: $%s (%s%%)" % ('{:,}'.format(round(self.ual, 2)),

@@ -546,6 +546,7 @@ class pensPop(object):
                         self.sampleSize
                         * (total_retired / (total + total_retired) * (0.93 ** i))
                     ),
+                    ## change 0.93 if you want to change the mortality rate of the reitred population
                     ageRange=(age_lower, age_upper),
                     serviceRange=(25, 30),
                     avgSalary=s,
@@ -678,6 +679,12 @@ class pensPop(object):
             sum += self.calculateLiability(m, self.discount, 1.02)
         return sum
 
+    def calculateTotalSalary(self):
+        total_salary = 0
+        for m in self.members:
+            total_salary += m.salary
+        return total_salary
+
     def getAnnualReport(self):
 
         """generate annual report with total members and total normal cost"""
@@ -777,11 +784,16 @@ if __name__ == "__main__":
         plt.plot(counter)
         plt.show()
 
+    def testCalculateTotalSalary():
+        x = pensPop()
+        print(x.calculateTotalSalary())
+
     # testdoesMemberRetire()
     # testcalculateLiability()
     # testgetAnnualReport()
     # testdoesMemberDie()
     # testAgeOneYear()
     testcalculateTotalLiability()
-    testSimulatePopulation()
+    testCalculateTotalSalary()
+    # testSimulatePopulation()
     # testAdvanceOneYear()
