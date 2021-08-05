@@ -326,7 +326,7 @@ class pensPop(object):
         self.members = members
         self.startingSalary = 50000
         self.avgAge = 30
-        self.sampleSize = 10
+        self.sampleSize = 100
         self.simulatePopulation()
         self.discount = 1 + discountRate
 
@@ -344,7 +344,7 @@ class pensPop(object):
         """Generates N member objects with randomly distributed ages and
         services.  Sex is random, too, unless it's specified."""
         out = []
-        for i in range(0, N):
+        for i in range(0, int(N)):
             if sex == "*":
                 if random.random() > 0.5:
                     chosenSex = "M"
@@ -706,6 +706,8 @@ class pensPop(object):
             if m.status == "active":
                 count += 1
                 sum += m.service
+        if count == 0:
+            return 0
         return sum / count
 
 
