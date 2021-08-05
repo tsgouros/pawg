@@ -326,7 +326,7 @@ class pensPop(object):
         self.members = members
         self.startingSalary = 50000
         self.avgAge = 30
-        self.sampleSize = 10
+        self.sampleSize = 100
         self.simulatePopulation()
         self.discount = 1 + discountRate
 
