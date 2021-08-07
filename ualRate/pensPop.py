@@ -326,7 +326,7 @@ class pensPop(object):
         self.members = members
         self.startingSalary = 50000
         self.avgAge = 30
-        self.sampleSize = 10
+        self.sampleSize = 100
         self.simulatePopulation()
         self.discount = 1 + discountRate
 
@@ -395,9 +395,6 @@ class pensPop(object):
         df_asd = pd.DataFrame(asd.values)
         df_asd = df_asd.rename(columns=df_asd.iloc[0])
         df_asd = df_asd.set_index("age")
-        proportion = []
-        y = 0
-        ageServiceDict = {}
         total = df_asd["total"]["total"]
         total_retired = 270835
         df_asd = df_asd.drop(index=["age", "total"], columns=["total"])
@@ -505,46 +502,21 @@ class pensPop(object):
             )
 
             ## retired members
-            self.members.extend(
-                self.simulateMembers(
-                    round(
-                        self.sampleSize
-                        * (total_retired / (total + total_retired) * 0.4)
-                    ),
-                    ageRange=(61, 66),
-                    serviceRange=(25, 30),
-                    avgSalary=random.randint(5500 * 12, 6000 * 12),
-                    status="retired",
-                )
-            )
-
-            self.members.extend(
-                self.simulateMembers(
-                    round(
-                        self.sampleSize
-                        * (total_retired / (total + total_retired) * 0.6)
-                    ),
-                    ageRange=(60, 65),
-                    serviceRange=(25, 30),
-                    avgSalary=random.randint(5500 * 12, 6000 * 12),
-                    status="retired",
-                )
-            )
-
         s = np.random.normal(4000, 4000)
         if s < 2000:
             s = random.uniform(2000, 4000)
 
-        age_lower = 65
-        age_upper = 70
+        age_lower = 60
+        age_upper = 65
 
-        for i in range(9):
+        for i in range(10):
 
             self.members.extend(
                 self.simulateMembers(
                     round(
                         self.sampleSize
-                        * (total_retired / (total + total_retired) * (0.93 ** i))
+                        * ((total_retired / (total + total_retired)) * (0.5 ** i))
+                        * 0.1
                     ),
                     ## change 0.93 if you want to change the mortality rate of the reitred population
                     ageRange=(age_lower, age_upper),
@@ -774,10 +746,21 @@ if __name__ == "__main__":
 
     def testSimulatePopulation():
         total_retired = 270835
+        x = pensPop()
         counter = []
-        for i in range(9):
-            total_retired = total_retired * (0.93 ** i)
-            counter.append(total_retired)
+
+        age_lower = 20
+        age_upper = 25
+
+        for i in range(15):
+            y = 0
+            for m in x.members:
+                if m.age <= age_upper and m.age >= age_lower:
+                    y += 1
+            counter.append(y)
+
+            age_lower += 5
+            age_upper += 5
 
         plt.plot(counter)
         plt.show()
@@ -791,7 +774,8 @@ if __name__ == "__main__":
     # testgetAnnualReport()
     # testdoesMemberDie()
     # testAgeOneYear()
-    testcalculateTotalLiability()
-    testCalculateTotalSalary()
+    # testcalculateTotalLiability()
+    # testCalculateTotalSalary()
+    testSimulatePopulation()
     # testSimulatePopulation()
     # testAdvanceOneYear()
