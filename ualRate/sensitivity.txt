@@ -1,0 +1,33 @@
+9 Aug 2021 (Mon, 15:06)
+
+We can use this file for random notes about the sensitivity testing
+using the pensPlan.py model and its friends.
+
+Variables that might impact the UAL growth rate (which appears to be
+pensPlan.growthRate).
+
+pensPlan.discountRate (is this reflected in pensPop.discountRate?)
+
+pensFund.volatility -- this actually contains both mean returns for
+                    the different asset classes and volatility.  The
+                    variable that will be of interest is the actual
+                    average returns and sd of the entire portfolio.
+
+pensMember.cola
+
+pensPlan.employmentGrowth
+
+pensMember.pension (proxy for benefit generosity, so mostly refers to
+                    the factor 0.55 that is there)
+
+pensMember.projectSalaryDelta
+
+Plan demographics will potentially be interesting. We might add a
+fudge factor to pensMort to slightly goose mortality rates up and
+down.
+
+
+We do not have contributions as an independent variable, but tracking
+the growth rate of contributions (premiums) will be useful.  Do we
+already have that through the contribution rate?
+
