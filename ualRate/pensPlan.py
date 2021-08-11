@@ -313,7 +313,7 @@ if __name__ == "__main__":
     # investment channels in pensFund.
     vol = [0.04, 0.03, 0.02, 0.03, 0.04, 0.04]
     eg = 1.0
-    size = 50
+    size = 25
     years = 100
 
     getModelData(vol, eg, size, years, saveAll=True, filename="vol_default")
