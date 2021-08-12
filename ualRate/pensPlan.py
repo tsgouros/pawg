@@ -8,7 +8,7 @@ import os
 
 
 class pensPlan(object):
-    def __init__(self, currentYear, volatility, employmentGrowth=1.0, discountRate=0.07):
+    def __init__(self, currentYear, volatility, employmentGrowth=1.0, discountRate=0.07, funds=0.75):
 
         self.currentYear = currentYear
         self.employ = employmentGrowth
@@ -23,8 +23,7 @@ class pensPlan(object):
 
         self.liability = self.population.calculateTotalLiability()
 
-        ## Start off 3/4 funded.
-        self.fund = pensFund(0.75 * self.liability, self.currentYear, volatility)
+        self.fund = pensFund(funds * self.liability, self.currentYear, volatility)
         self.ual = self.liability - sum(self.fund.ledger[self.currentYear])
         self.assets = sum(self.fund.ledger[self.currentYear])
 
@@ -76,14 +75,15 @@ class pensPlan(object):
 
         self.fund.addInvestmentEarnings(self.currentYear)
         self.assets = sum(self.fund.ledger[self.currentYear])
-        if self.ual != 0:
-            self.growthRate = ((max((self.liability - self.assets - self.payGo), 0) - self.ual) / self.ual) * 100
-        else:
-            if self.liability - self.assets > 0:
-                self.growthRate = 100
+        newUAL = max((self.liability - self.assets - self.payGo), 0)
+        try:
+            self.growthRate = (newUAL - self.ual) * 100 / self.ual
+        except ZeroDivisionError:
+            if newUAL != 0:
+                self.growthRate = (newUAL - 0.1) * 100 / 0.1
             else:
                 self.growthRate = 0
-        self.ual = max((self.liability - self.assets - self.payGo), 0)
+        self.ual = newUAL
 
     def adjustEmployment(self, N):
         """Adjust employment up or down."""
@@ -94,10 +94,10 @@ class pensPlan(object):
 
 
 def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
-             filename="plotly_graph"):
+             filename="plotly_graph", discountRate=0.07, funds=0.75):
     # Create Plan and dictionary to keep track of annual data
     d = {}
-    p = pensPlan(2000, volatility, employmentGrowth)
+    p = pensPlan(2000, volatility, employmentGrowth, discountRate, funds)
 
     d["UAL"] = [p.ual]
     d["Assets"] = [p.assets]
@@ -155,23 +155,26 @@ def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
         filename = "%s_%s" % (temp, str(count))
         directory = "Graphs/%s/%s.html" % (folder, filename)
 
+    csv_directory = "Graphs/%s/%s.csv" % (folder, filename)
+    df.to_csv(csv_directory)
     fig.write_html(directory)
 
     return d
 
 
-def getModelData(volatility, employmentGrowth, size=50, years=100, saveAll=False, filename="run_1"):
+def getModelData(volatility, employmentGrowth, discountRate=0.07, funds=0.75, size=50, years=100, saveAll=True,
+                 filename="data_1"):
     # Create directory for data visualization, if necessary.
-    folder = "eg=%s" % (str(employmentGrowth))
+    folder = "eg=%s_dr=%s_f=%s" % (str(employmentGrowth), str(discountRate), str(funds))
     if not os.path.exists('Graphs/%s' % folder):
         os.makedirs('Graphs/%s' % folder)
 
     # Determine appropriate filename for visualization of mean values
-    if filename == "run_1":
+    if filename == "data_1":
         count = 2
         directory = "Graphs/%s/%s.html" % (folder, filename)
         while os.path.exists(directory):
-            filename = "run_%s" % (str(count))
+            filename = "data_%s" % (str(count))
             directory = "Graphs/%s/%s.html" % (folder, filename)
             count += 1
     else:
@@ -192,7 +195,7 @@ def getModelData(volatility, employmentGrowth, size=50, years=100, saveAll=False
 
         # All individual model graphs will be named graph_1, graph_2, graph_3, etc. and placed within the above folder
         # (The numbers are added within the runModel() function.)
-        subdir = "%s/graph" % filename
+        subdir = "%s/model" % filename
 
     else:
         subdir = None
@@ -204,16 +207,18 @@ def getModelData(volatility, employmentGrowth, size=50, years=100, saveAll=False
         # Run the model, then append the resulting dictionary to the list.
         # Set saveAll to True if you want to save individual run visualizations.
 
-        model_data.append(runModel(volatility, employmentGrowth, years, saveFiles=saveAll,
-                                   filename=subdir))
+        try:
+            model_data.append(runModel(volatility, employmentGrowth, years, saveFiles=saveAll,
+                                       filename=subdir))
+        except:
+            print("An error occurred while running models.\n%s out of %s models completed." % (str(i), str(size)))
+            raise
 
-        # Console counter for user to see how far the script is progressing (it takes a long time!)
-        print(i, end=" ")
-
-    print("\nFinished running models. Averaging the data...")
+    print("\nFinished running models. Averaging the data...\n")
 
     # Find the mean values across all runs and visualize them, to see overall shape of the data w/ the given parameters.
-    mean_data = {"UAL": [], "Assets": [], "Liability": [], "UAL Growth(%)": [], "Active Members": [], "Retired Members": [],
+    mean_data = {"UAL": [], "Assets": [], "Liability": [], "UAL Growth(%)": [], "Active Members": [],
+                 "Retired Members": [],
                  "Avg. Service": [], "Contribution Rate": [], "payGo": [], "Total Salary": []}
     for i in range(years):
         m_ual = [run["UAL"][i] for run in model_data]
@@ -249,8 +254,11 @@ def getModelData(volatility, employmentGrowth, size=50, years=100, saveAll=False
         mean_data["payGo"].append(payGo)
         mean_data["Total Salary"].append(salary)
 
+    print("Model data successfully averaged!")
     # Convert dictionary data into a DataFrame, used to create the graph.
     df = pd.DataFrame(data=mean_data, index=range(2000, (2000 + years)))
+    csv_directory = "Graphs/%s/%s.csv" % (folder, filename)
+    df.to_csv(csv_directory)
 
     # Print the DataFrame, visible in console as a table.
     # print(df)
@@ -259,6 +267,7 @@ def getModelData(volatility, employmentGrowth, size=50, years=100, saveAll=False
     fig = px.line(df)
     fig.write_html(directory)
     # HTML files can be opened to view interactive plotly visualization.
+    print("Data visualization saved at %s\nCSV file saved at %s" % (directory, csv_directory))
 
     return [mean_data, model_data]
 
@@ -275,27 +284,19 @@ if __name__ == "__main__":
     # Create directories for storing graphs, if necessary
     setupFolders()
 
-    #### Add your desired model runs here! Some examples are included below.
-
-    # Volatility values to be used throughout. List contains mean and std. deviation (in that order) for the three 
-    # investment channels in pensFund. 
+    # Volatility values to be used throughout. List contains mean and std. deviation (in that order) for the three
+    # investment channels in pensFund.
     vol = [0.04, 0.03, 0.02, 0.03, 0.04, 0.04]
+    # Employment growth rate
     eg = 1.0
-    size = 50
-    years = 100
+    # Discount rate
+    dr = 0.07
+    # Initial funding (as a fraction of initial liability)
+    f = 0.75
+    # Number of iterations for getModelData()
+    size = 40
+    # Length of each individual model in years
+    years = 75
 
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_default")
-
-    # Testing the effect of more 'generous' volatility lists
-    vol = [0.08, 0.03, 0.06, 0.03, 0.08, 0.04]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_mean_plus4")
-
-    vol = [0.12, 0.03, 0.10, 0.03, 0.12, 0.04]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_mean_plus8")
-
-    # Testing the effect of more 'volatile' volatility lists
-    vol = [0.04, 0.07, 0.02, 0.07, 0.04, 0.08]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_sd_plus4")
-
-    vol = [0.04, 0.11, 0.02, 0.11, 0.04, 0.12]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_sd_plus8")
+    # Add your tests below!
+    getModelData(vol, eg, dr, f, size, years, filename="example")
