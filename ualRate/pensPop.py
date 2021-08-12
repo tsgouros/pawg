@@ -531,6 +531,9 @@ class pensPop(object):
             age_lower += 5
             age_upper += 5
 
+        ## data source: California State Teacher's Retiremenet System (p.75-76)
+        ## https://www.calstrs.com/sites/main/files/file-attachments/db-valuation-2019.pdf
+
     def advanceOneYear(self):
         """TBD: Advance the population by a year -- increase everyone's age
         and service, give them raises, retire some people, others die,
