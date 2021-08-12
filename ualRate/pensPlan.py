@@ -21,10 +21,10 @@ class pensPlan(object):
         self.population = pensPop([], self.discountRate)
         self.population.simulatePopulation()
 
-        self.liability = self.population.calculateTotalLiability()
+        self.liability = round(self.population.calculateTotalLiability(), 2)
 
         self.fund = pensFund(funds * self.liability, self.currentYear, volatility)
-        self.ual = self.liability - sum(self.fund.ledger[self.currentYear])
+        self.ual = round(self.liability - sum(self.fund.ledger[self.currentYear]), 2)
         self.assets = sum(self.fund.ledger[self.currentYear])
 
         self.growthRate = 0.0
@@ -59,14 +59,14 @@ class pensPlan(object):
         popGrowth = sum([m.status == 'active' for m in self.population.members]) - popGrowth
 
         ## Calculate the increment of the normal cost.
-        newLiability = self.population.calculateTotalLiability()
+        newLiability = round(self.population.calculateTotalLiability(), 2)
         normalCost = (newLiability - self.liability)
         self.liability = newLiability
 
         self.fund.addPremiums(normalCost)
 
-        self.payGo = self.fund.payBenefits(info['benefit'])
-        self.totalPay = self.population.calculateTotalSalary()
+        self.payGo = round(self.fund.payBenefits(info['benefit']), 2)
+        self.totalPay = round(self.population.calculateTotalSalary(), 2)
 
         if popGrowth != 0:
             self.cr = (normalCost + self.payGo) / (self.totalPay * popGrowth)
@@ -83,6 +83,7 @@ class pensPlan(object):
                 self.growthRate = (newUAL - 0.1) * 100 / 0.1
             else:
                 self.growthRate = 0
+        self.growthRate = round(self.growthRate, 2)
         self.ual = newUAL
 
     def adjustEmployment(self, N):
@@ -105,7 +106,7 @@ def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
     d["UAL Growth(%)"] = [round(p.growthRate, 2)]
     d["Active Members"] = [sum([m.status == 'active' for m in p.population.members])]
     d["Retired Members"] = [sum([m.status == 'retired' for m in p.population.members])]
-    d["Avg. Service"] = [p.population.getAvgService()]
+    d["Avg. Service"] = [round(p.population.getAvgService())]
     d["Contribution Rate"] = [p.cr]
     d["payGo"] = [p.payGo]
     d["Total Salary"] = [p.totalPay]
@@ -119,7 +120,7 @@ def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
         d["UAL Growth(%)"].append(round(p.growthRate, 2))
         d["Active Members"].append(sum([m.status == 'active' for m in p.population.members]))
         d["Retired Members"].append(sum([m.status == 'retired' for m in p.population.members]))
-        d["Avg. Service"].append(p.population.getAvgService())
+        d["Avg. Service"].append(round(p.population.getAvgService()))
         d["Contribution Rate"].append(p.cr)
         d["payGo"].append(p.payGo)
         d["Total Salary"].append(p.totalPay)
@@ -139,7 +140,7 @@ def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
 
     # Save graph as HTML file in the appropriate folder. If no such directory exists yet, create it.
     # HTML files can be opened to view interactive plotly visualization.
-    folder = "eg=%s" % (str(employmentGrowth))
+    folder = "eg=%s_dr=%s_f=%s" % (str(employmentGrowth), str(discountRate), str(funds))
     try:
         os.makedirs('Graphs/%s' % folder)
     except OSError as e:
@@ -232,16 +233,16 @@ def getModelData(volatility, employmentGrowth, discountRate=0.07, funds=0.75, si
         m_payGo = [run["payGo"][i] for run in model_data]
         m_salary = [run["Total Salary"][i] for run in model_data]
 
-        ual = stats.mean(m_ual)
-        assets = stats.mean(m_assets)
-        liability = stats.mean(m_liability)
-        growth = stats.mean(m_growth)
-        active = stats.mean(m_active)
-        retired = stats.mean(m_retired)
-        service = stats.mean(m_service)
-        cr = stats.mean(m_cr)
-        payGo = stats.mean(m_payGo)
-        salary = stats.mean(m_salary)
+        ual = round(stats.mean(m_ual), 2)
+        assets = round(stats.mean(m_assets), 2)
+        liability = round(stats.mean(m_liability), 2)
+        growth = round(stats.mean(m_growth), 2)
+        active = round(stats.mean(m_active))
+        retired = round(stats.mean(m_retired))
+        service = round(stats.mean(m_service))
+        cr = round(stats.mean(m_cr), 2)
+        payGo = round(stats.mean(m_payGo), 2)
+        salary = round(stats.mean(m_salary), 2)
 
         mean_data["UAL"].append(ual)
         mean_data["Assets"].append(assets)
@@ -294,9 +295,10 @@ if __name__ == "__main__":
     # Initial funding (as a fraction of initial liability)
     f = 0.75
     # Number of iterations for getModelData()
-    size = 40
+    size = 50
     # Length of each individual model in years
-    years = 75
+    years = 100
 
     # Add your tests below!
     getModelData(vol, eg, dr, f, size, years, filename="example")
+
