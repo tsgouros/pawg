@@ -9,7 +9,12 @@ import os
 
 class pensPlan(object):
     def __init__(
-        self, currentYear, volatility, employmentGrowth=1.0, discountRate=0.10
+        self,
+        currentYear,
+        volatility,
+        employmentGrowth=1.0,
+        discountRate=0.07,
+        funds=0.75,
     ):
 
         self.currentYear = currentYear
@@ -23,11 +28,10 @@ class pensPlan(object):
         self.population = pensPop([], self.discountRate)
         self.population.simulatePopulation()
 
-        self.liability = self.population.calculateTotalLiability()
+        self.liability = round(self.population.calculateTotalLiability(), 2)
 
-        ## Start off 3/4 funded.
-        self.fund = pensFund(0.75 * self.liability, self.currentYear, volatility)
-        self.ual = self.liability - sum(self.fund.ledger[self.currentYear])
+        self.fund = pensFund(funds * self.liability, self.currentYear, volatility)
+        self.ual = round(self.liability - sum(self.fund.ledger[self.currentYear]), 2)
         self.assets = sum(self.fund.ledger[self.currentYear])
 
         self.growthRate = 0.0
@@ -69,14 +73,14 @@ class pensPlan(object):
         )
 
         ## Calculate the increment of the normal cost.
-        newLiability = self.population.calculateTotalLiability()
+        newLiability = round(self.population.calculateTotalLiability(), 2)
         normalCost = newLiability - self.liability
         self.liability = newLiability
 
         self.fund.addPremiums(normalCost)
 
-        self.payGo = self.fund.payBenefits(info["benefit"])
-        self.totalPay = self.population.calculateTotalSalary()
+        self.payGo = round(self.fund.payBenefits(info["benefit"]), 2)
+        self.totalPay = round(self.population.calculateTotalSalary(), 2)
 
         if popGrowth != 0:
             self.cr = (normalCost + self.payGo) / (self.totalPay * popGrowth)
@@ -85,17 +89,16 @@ class pensPlan(object):
 
         self.fund.addInvestmentEarnings(self.currentYear)
         self.assets = sum(self.fund.ledger[self.currentYear])
-        if self.ual != 0:
-            self.growthRate = (
-                (max((self.liability - self.assets - self.payGo), 0) - self.ual)
-                / self.ual
-            ) * 100
-        else:
-            if self.liability - self.assets > 0:
-                self.growthRate = 100
+        newUAL = max((self.liability - self.assets - self.payGo), 0)
+        try:
+            self.growthRate = (newUAL - self.ual) * 100 / self.ual
+        except ZeroDivisionError:
+            if newUAL != 0:
+                self.growthRate = (newUAL - 0.1) * 100 / 0.1
             else:
                 self.growthRate = 0
-        self.ual = max((self.liability - self.assets - self.payGo), 0)
+        self.growthRate = round(self.growthRate, 2)
+        self.ual = newUAL
 
     def adjustEmployment(self, N):
         """Adjust employment up or down."""
@@ -106,11 +109,17 @@ class pensPlan(object):
 
 
 def runModel(
-    volatility, employmentGrowth=1.0, years=40, saveFiles=False, filename="plotly_graph"
+    volatility,
+    employmentGrowth=1.0,
+    years=40,
+    saveFiles=False,
+    filename="plotly_graph",
+    discountRate=0.07,
+    funds=0.75,
 ):
     # Create Plan and dictionary to keep track of annual data
     d = {}
-    p = pensPlan(2000, volatility, employmentGrowth)
+    p = pensPlan(2000, volatility, employmentGrowth, discountRate, funds)
 
     d["UAL"] = [p.ual]
     d["Assets"] = [p.assets]
@@ -118,7 +127,7 @@ def runModel(
     d["UAL Growth(%)"] = [round(p.growthRate, 2)]
     d["Active Members"] = [sum([m.status == "active" for m in p.population.members])]
     d["Retired Members"] = [sum([m.status == "retired" for m in p.population.members])]
-    d["Avg. Service"] = [p.population.getAvgService()]
+    d["Avg. Service"] = [round(p.population.getAvgService())]
     d["Contribution Rate"] = [p.cr]
     d["payGo"] = [p.payGo]
     d["Total Salary"] = [p.totalPay]
@@ -136,7 +145,7 @@ def runModel(
         d["Retired Members"].append(
             sum([m.status == "retired" for m in p.population.members])
         )
-        d["Avg. Service"].append(p.population.getAvgService())
+        d["Avg. Service"].append(round(p.population.getAvgService()))
         d["Contribution Rate"].append(p.cr)
         d["payGo"].append(p.payGo)
         d["Total Salary"].append(p.totalPay)
@@ -156,7 +165,7 @@ def runModel(
 
     # Save graph as HTML file in the appropriate folder. If no such directory exists yet, create it.
     # HTML files can be opened to view interactive plotly visualization.
-    folder = "eg=%s" % (str(employmentGrowth))
+    folder = "eg=%s_dr=%s_f=%s" % (str(employmentGrowth), str(discountRate), str(funds))
     try:
         os.makedirs("Graphs/%s" % folder)
     except OSError as e:
@@ -172,25 +181,34 @@ def runModel(
         filename = "%s_%s" % (temp, str(count))
         directory = "Graphs/%s/%s.html" % (folder, filename)
 
+    csv_directory = "Graphs/%s/%s.csv" % (folder, filename)
+    df.to_csv(csv_directory)
     fig.write_html(directory)
 
     return d
 
 
 def getModelData(
-    volatility, employmentGrowth, size=50, years=100, saveAll=False, filename="run_1"
+    volatility,
+    employmentGrowth,
+    discountRate=0.07,
+    funds=0.75,
+    size=50,
+    years=100,
+    saveAll=True,
+    filename="data_1",
 ):
     # Create directory for data visualization, if necessary.
-    folder = "eg=%s" % (str(employmentGrowth))
+    folder = "eg=%s_dr=%s_f=%s" % (str(employmentGrowth), str(discountRate), str(funds))
     if not os.path.exists("Graphs/%s" % folder):
         os.makedirs("Graphs/%s" % folder)
 
     # Determine appropriate filename for visualization of mean values
-    if filename == "run_1":
+    if filename == "data_1":
         count = 2
         directory = "Graphs/%s/%s.html" % (folder, filename)
         while os.path.exists(directory):
-            filename = "run_%s" % (str(count))
+            filename = "data_%s" % (str(count))
             directory = "Graphs/%s/%s.html" % (folder, filename)
             count += 1
     else:
@@ -211,7 +229,7 @@ def getModelData(
 
         # All individual model graphs will be named graph_1, graph_2, graph_3, etc. and placed within the above folder
         # (The numbers are added within the runModel() function.)
-        subdir = "%s/graph" % filename
+        subdir = "%s/model" % filename
 
     else:
         subdir = None
@@ -223,16 +241,24 @@ def getModelData(
         # Run the model, then append the resulting dictionary to the list.
         # Set saveAll to True if you want to save individual run visualizations.
 
-        model_data.append(
-            runModel(
-                volatility, employmentGrowth, years, saveFiles=saveAll, filename=subdir
+        try:
+            model_data.append(
+                runModel(
+                    volatility,
+                    employmentGrowth,
+                    years,
+                    saveFiles=saveAll,
+                    filename=subdir,
+                )
             )
-        )
+        except:
+            print(
+                "An error occurred while running models.\n%s out of %s models completed."
+                % (str(i), str(size))
+            )
+            raise
 
-        # Console counter for user to see how far the script is progressing (it takes a long time!)
-        print(i, end=" ")
-
-    print("\nFinished running models. Averaging the data...")
+    print("\nFinished running models. Averaging the data...\n")
 
     # Find the mean values across all runs and visualize them, to see overall shape of the data w/ the given parameters.
     mean_data = {
@@ -259,16 +285,16 @@ def getModelData(
         m_payGo = [run["payGo"][i] for run in model_data]
         m_salary = [run["Total Salary"][i] for run in model_data]
 
-        ual = stats.mean(m_ual)
-        assets = stats.mean(m_assets)
-        liability = stats.mean(m_liability)
-        growth = stats.mean(m_growth)
-        active = stats.mean(m_active)
-        retired = stats.mean(m_retired)
-        service = stats.mean(m_service)
-        cr = stats.mean(m_cr)
-        payGo = stats.mean(m_payGo)
-        salary = stats.mean(m_salary)
+        ual = round(stats.mean(m_ual), 2)
+        assets = round(stats.mean(m_assets), 2)
+        liability = round(stats.mean(m_liability), 2)
+        growth = round(stats.mean(m_growth), 2)
+        active = round(stats.mean(m_active))
+        retired = round(stats.mean(m_retired))
+        service = round(stats.mean(m_service))
+        cr = round(stats.mean(m_cr), 2)
+        payGo = round(stats.mean(m_payGo), 2)
+        salary = round(stats.mean(m_salary), 2)
 
         mean_data["UAL"].append(ual)
         mean_data["Assets"].append(assets)
@@ -281,8 +307,11 @@ def getModelData(
         mean_data["payGo"].append(payGo)
         mean_data["Total Salary"].append(salary)
 
+    print("Model data successfully averaged!")
     # Convert dictionary data into a DataFrame, used to create the graph.
     df = pd.DataFrame(data=mean_data, index=range(2000, (2000 + years)))
+    csv_directory = "Graphs/%s/%s.csv" % (folder, filename)
+    df.to_csv(csv_directory)
 
     # Print the DataFrame, visible in console as a table.
     # print(df)
@@ -291,6 +320,10 @@ def getModelData(
     fig = px.line(df)
     fig.write_html(directory)
     # HTML files can be opened to view interactive plotly visualization.
+    print(
+        "Data visualization saved at %s\nCSV file saved at %s"
+        % (directory, csv_directory)
+    )
 
     return [mean_data, model_data]
 
@@ -307,13 +340,20 @@ if __name__ == "__main__":
     # Create directories for storing graphs, if necessary
     setupFolders()
 
-    #### Add your desired model runs here! Some examples are included below.
-
     # Volatility values to be used throughout. List contains mean and std. deviation (in that order) for the three
     # investment channels in pensFund.
-    vol = [0.04, 0.03, 0.01, 0.02, 0.04, 0.04]
+    vol = [0.04, 0.03, 0.02, 0.03, 0.04, 0.04]
+    # Employment growth rate
     eg = 1.0
+    # Discount rate
+    dr = 0.07
+    # Initial funding (as a fraction of initial liability)
+    f = 0.75
+    # Number of iterations for getModelData()
     size = 50
-    years = 75
+    # Length of each individual model in years
+    years = 100
 
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_default")
+    # Add your tests below!
+    getModelData(vol, eg, dr, f, size, years, filename="example")
+
