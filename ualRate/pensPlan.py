@@ -311,23 +311,9 @@ if __name__ == "__main__":
 
     # Volatility values to be used throughout. List contains mean and std. deviation (in that order) for the three
     # investment channels in pensFund.
-    vol = [0.04, 0.03, 0.02, 0.03, 0.04, 0.04]
+    vol = [0.04, 0.03, 0.01, 0.02, 0.04, 0.04]
     eg = 1.0
-    size = 25
-    years = 100
+    size = 50
+    years = 75
 
     getModelData(vol, eg, size, years, saveAll=True, filename="vol_default")
-
-    # Testing the effect of more 'generous' volatility lists
-    vol = [0.08, 0.03, 0.06, 0.03, 0.08, 0.04]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_mean_plus4")
-
-    vol = [0.12, 0.03, 0.10, 0.03, 0.12, 0.04]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_mean_plus8")
-
-    # Testing the effect of more 'volatile' volatility lists
-    vol = [0.04, 0.07, 0.02, 0.07, 0.04, 0.08]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_sd_plus4")
-
-    vol = [0.04, 0.11, 0.02, 0.11, 0.04, 0.12]
-    getModelData(vol, eg, size, years, saveAll=True, filename="vol_sd_plus8")
