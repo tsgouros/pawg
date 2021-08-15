@@ -342,7 +342,7 @@ if __name__ == "__main__":
 
     # Volatility values to be used throughout. List contains mean and std. deviation (in that order) for the three
     # investment channels in pensFund.
-    vol = [0.06, 0.01, 0.03, 0.005, 0.06, 0.01]
+    vol = [0.06 * 1.2, 0.01, 0.03 * 1.2, 0.005, 0.06 * 1.2, 0.01]
     # Employment growth rate
     eg = 1.0
     # Discount rate
