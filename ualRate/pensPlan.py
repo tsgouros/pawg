@@ -8,13 +8,14 @@ import os
 
 
 class pensPlan(object):
-    def __init__(self, currentYear, volatility, employmentGrowth=1.0, discountRate=0.07, funds=0.75):
+    def __init__(self, currentYear, volatility, employmentGrowth=1.0, discountRate=0.07, funds=0.75, premiumRate=1.0):
 
         self.currentYear = currentYear
         self.employ = employmentGrowth
         self.cr = 0
         self.payGo = 0
         self.totalPay = 0
+        self.pr = premiumRate
 
         self.discountRate = discountRate
 
@@ -63,7 +64,7 @@ class pensPlan(object):
         normalCost = (newLiability - self.liability)
         self.liability = newLiability
 
-        self.fund.addPremiums(normalCost)
+        self.fund.addPremiums(self.pr * normalCost)
 
         self.payGo = round(self.fund.payBenefits(info['benefit']), 2)
         self.totalPay = round(self.population.calculateTotalSalary(), 2)
@@ -80,7 +81,7 @@ class pensPlan(object):
             self.growthRate = (newUAL - self.ual) * 100 / self.ual
         except ZeroDivisionError:
             if newUAL != 0:
-                self.growthRate = (newUAL - 0.1) * 100 / 0.1
+                self.growthRate = newUal * 100 / self.liability
             else:
                 self.growthRate = 0
         self.growthRate = round(self.growthRate, 2)
@@ -94,11 +95,11 @@ class pensPlan(object):
             self.population.layoffMembers(-N)
 
 
-def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
-             filename="plotly_graph", discountRate=0.07, funds=0.75):
+def runModel(volatility, employmentGrowth=1.0, discountRate=0.07, funds=0.75, premiums=1.0, years=40, saveFiles=False,
+             filename="plotly_graph"):
     # Create Plan and dictionary to keep track of annual data
     d = {}
-    p = pensPlan(2000, volatility, employmentGrowth, discountRate, funds)
+    p = pensPlan(2000, volatility, employmentGrowth, discountRate, funds, premiums)
 
     d["UAL"] = [p.ual]
     d["Assets"] = [p.assets]
@@ -163,7 +164,8 @@ def runModel(volatility, employmentGrowth=1.0, years=40, saveFiles=False,
     return d
 
 
-def getModelData(volatility, employmentGrowth, discountRate=0.07, funds=0.75, size=50, years=100, saveAll=True,
+def getModelData(volatility, employmentGrowth, discountRate=0.07, funds=0.75, premiums=1.0, size=50, years=100,
+                 saveAll=True,
                  filename="data_1"):
     # Create directory for data visualization, if necessary.
     folder = "eg=%s_dr=%s_f=%s" % (str(employmentGrowth), str(discountRate), str(funds))
@@ -209,8 +211,9 @@ def getModelData(volatility, employmentGrowth, discountRate=0.07, funds=0.75, si
         # Set saveAll to True if you want to save individual run visualizations.
 
         try:
-            model_data.append(runModel(volatility, employmentGrowth, years, saveFiles=saveAll,
-                                       filename=subdir))
+            model_data.append(
+                runModel(volatility, employmentGrowth, discountRate, funds, premiums, years, saveFiles=saveAll,
+                         filename=subdir))
         except:
             print("An error occurred while running models.\n%s out of %s models completed." % (str(i), str(size)))
             raise
@@ -294,11 +297,18 @@ if __name__ == "__main__":
     dr = 0.07
     # Initial funding (as a fraction of initial liability)
     f = 0.75
+    # Premium payment contribution modifier
+    p = 1.0
     # Number of iterations for getModelData()
-    size = 50
+    size = 2
     # Length of each individual model in years
-    years = 100
+    years = 3
+    # filename for your test
+    name = "example"
 
-    # Add your tests below!
-    getModelData(vol, eg, dr, f, size, years, filename="example")
+    ## Your tests go here!
+    print("Beginning %s tests.\n" % name)
 
+    getModelData(vol, eg, dr, f, size, years, filename=name)
+
+    print("\nFinished %s tests!" % name)
