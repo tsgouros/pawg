@@ -38,7 +38,7 @@ source("mortality.r")
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
-doesMemberSeparate <- function(age, service, status, tier=1) {
+doesMemberSeparate <- function(age, service, status, tier=1, verbose=FALSE) {
     cat("Running default doesMemberSeparate.\n");
 
     ## If this is not currently an active employee, get out.
@@ -55,7 +55,7 @@ doesMemberSeparate <- function(age, service, status, tier=1) {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, tier=1) {
+doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
     cat("Running default doesMemberRetire.\n");
 
     ## If already retired, get out.
@@ -89,7 +89,8 @@ doesMemberRetire <- function(age, service, status, tier=1) {
 }
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
-                                     mortClass="General", tier=1) {
+                                     mortClass="General", tier=1,
+                                     verbose=FALSE) {
     cat("Running default doesMemberBecomeDisabled.\n");
 
     ## If already retired or disabled, don't change anything and get out.
@@ -117,7 +118,8 @@ source("mortality.r")
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.  Tier refers to any kind of subdivision
 ## among the members.
-projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
+projectSalaryDelta <- function(year, age, salary, service=1, tier=1,
+                               verbose=FALSE) {
     cat("Running default projectSalaryDelta.\n");
 
     if (age < 25) {
@@ -139,7 +141,7 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
     return(out);
 }
 
-projectPension <- function(salaryHistory, tier=1) {
+projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
     cat("Running default projectPension.\n");
 
     startingPension <- max(salaryHistory$salary) * 0.55;
@@ -163,7 +165,7 @@ projectPension <- function(salaryHistory, tier=1) {
 ## Accepts a salary history tibble and adds a column for the estimated
 ## premiums paid into the system for this employee for each year.
 ## (Combined employer and employee share.)
-projectPremiums <- function(salaryHistory) {
+projectPremiums <- function(salaryHistory, verbose=FALSE) {
     cat("Running default projectPremiums.\n");
 
     return(salaryHistory %>%
@@ -597,19 +599,21 @@ print.memberList <- function(ml, ...) {
 # year and from a series of those, we can create the 'P' matrix above.
 
 
-
 ## Generate N new active employees with the given ranges, and append
 ## them to the input list of members.
 genEmployees <- function (N=1, ageRange=c(20,25), servRange=c(0,5),
                          avgSalary=75000, members=memberList(),
-                         class="General", status="active") {
+                         sex="M", tier=1,
+                         class="General", status="active",
+                         verbose=FALSE) {
 
     ages <- round(runif(N)*(ageRange[2] - ageRange[1])) + ageRange[1];
     servs <- round(runif(N)*(servRange[2] - servRange[1])) + servRange[1];
     salaries <- rnorm(N, mean=avgSalary, sd=5000);
 
     for (i in 1:N) {
-        m <- member(age=ages[i], service=servs[i], salary=salaries[i]);
+        m <- member(age=ages[i], service=servs[i], salary=salaries[i],
+                    sex=sex, tier=tier, verbose=verbose);
         members[[m$id]] <- m;
     }
 
@@ -797,15 +801,45 @@ plotModelOut <- function(modelOut) {
     modelOutSummary <-
         modelOut %>%
         group_by(ryear) %>%
-        summarize(car=mean(car));
+        summarize(car=mean(car),N=n());
 
     modelOutAvg <- modelOutSummary %>%
         filter(ryear == 1000) %>% select(car) %>% as.numeric();
 
     plotOut <- ggplot(modelOutSummary %>% filter(ryear > 1900)) +
-        geom_point(aes(x=ryear, y=car), color="blue") +
+        geom_point(aes(x=ryear, y=car, color=N)) +
         ylim(c(0,.1)) +
         geom_hline(yintercept=modelOutAvg, color="red") +
+        labs(x="retirement class", y="CAR");
+
+    return(plotOut);
+}
+
+altPlotModelOut <- function(modelOut) {
+
+    modelOutSummary <-
+        modelOut %>%
+        group_by(ryear) %>%
+        summarize(car=mean(car),N=n());
+
+    modelOutAvg <- modelOutSummary %>%
+        filter(ryear == 1000) %>% select(car) %>% as.numeric();
+
+    modelOutAug <- modelOut %>%
+        group_by(ryear) %>%
+        mutate(N=length(car),delta=car-mean(car)) %>%
+        filter(abs(delta) < 0.09)
+
+    plotOut <- ggplot(modelOutAug %>% filter(ryear > 1900)) +
+        geom_point(aes(x=ryear, y=car, color=abs(delta))) +
+        ylim(c(-0.05,.1)) +
+        xlim(c(2020,2065)) +
+        scale_colour_gradientn(
+            colours = c("#ff0000","#aa3333","#665555","#777777",
+                        "#888888","#aaaaaa","#cccccc","#eeeeee"),
+            values = c(0.0, 0.01, 0.04, 0.09, 0.13, 0.35, 0.60, 0.80, 1.0))+
+        geom_hline(yintercept=modelOutAvg, color="blue") +
+        theme(legend.position="NONE") +
         labs(x="retirement class", y="CAR");
 
     return(plotOut);
