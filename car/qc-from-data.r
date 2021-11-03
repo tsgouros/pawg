@@ -31,7 +31,8 @@ qcMemberData <- tmp %>%
 
 ##
 ## Takes a table of member data and converts it to a bunch of member
-## objects, and returns them.
+## objects, and returns them.  This is specific to the format in which
+## we received the Queen Creek data.
 ##
 genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
 
@@ -99,9 +100,59 @@ genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
     return(members);
 }
 
-qcFireFromData <- genEmployeesFromData(qcMemberData, verbose=FALSE)
-
+##qcFireFromData <- genEmployeesFromData(qcMemberData, verbose=FALSE)
+cat(date(),"\n");
 qcModelOutputFromData <-
-    runModel(function() { genEmployeesFromData(qcMemberData) },
-             verbose=FALSE, N=1);
+    runModel(function(verbose=FALSE) {
+        genEmployeesFromData(qcMemberData, verbose=verbose)
+    }, verbose=FALSE, N=250);
 qcModelPlotFromData <- plotModelOut(qcModelOutputFromData)
+cat(date(), "done with all\n");
+
+qcModelOutputFromDataTierOne <-
+    runModel(function(verbose=FALSE) {
+        genEmployeesFromData(qcMemberData %>% filter(tier==1), verbose=verbose)
+    }, verbose=FALSE, N=250, sampler=function(m) { m$tier==1 });
+cat(date(), "done with one\n");
+
+qcModelOutputFromDataTierTwo <-
+    runModel(function(verbose=FALSE) {
+        genEmployeesFromData(qcMemberData %>% filter(tier==2), verbose=verbose)
+    }, verbose=FALSE, N=250, sampler=function(m) { m$tier==2 });
+cat(date(), "done with two\n");
+
+qcModelOutputFromDataTierThree <-
+    runModel(function(verbose=FALSE) {
+        genEmployeesFromData(qcMemberData %>% filter(tier==3), verbose=verbose)
+    }, verbose=FALSE, N=250, sampler=function(m) { m$tier==3 });
+cat(date(), "done with three\n");
+cat(date(),"\n");
+date()
+
+
+dotplot.all <- plotModelOut(qcModelOutputFromData)
+ggsave("car-all.png",
+       plot=dotplot.all,
+       device="png",
+       width=5.5, height=4, units="in")
+
+dotplot.one <- plotModelOut(qcModelOutputFromDataTierOne)
+ggsave("car-tier-1.png",
+       plot=dotplot.one,
+       device="png",
+       width=5.5, height=4, units="in")
+
+dotplot.two <- plotModelOut(qcModelOutputFromDataTierTwo)
+ggsave("car-tier-2.png",
+       plot=dotplot.two,
+       device="png",
+       width=5.5, height=4, units="in")
+
+dotplot.three <- plotModelOut(qcModelOutputFromDataTierThree)
+ggsave("car-tier-3.png",
+       plot=dotplot.three,
+       device="png",
+       width=5.5, height=4, units="in")
+
+
+
