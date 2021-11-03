@@ -53,3 +53,5 @@ Rplot.png
 # Tom's
 trash.*
 
+## Don't keep generated files
+*.png
