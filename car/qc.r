@@ -9,7 +9,8 @@ source("car.r")
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
-doesMemberSeparate <- function(age, service, status, tier=1) {
+doesMemberSeparate <- function(age, service, status, tier=1,
+                               verbose=FALSE) {
     ## If this is not currently an active employee, get out.
     if (status != "active") return(status);
 
@@ -85,7 +86,8 @@ doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
 }
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
-                                     mortClass="General", tier=1) {
+                                     mortClass="General", tier=1,
+                                     verbose=FALSE) {
     ## If already retired or disabled, don't change anything and get out.
     if ((status == "retired") | (status == "deceased") |
         (status == "disabled") ) return(status);
@@ -132,7 +134,7 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
     return(out);
 }
 
-projectPension <- function(salaryHistory, tier=1) {
+projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
 
     service <- sum(salaryHistory$salary > 0);
 
@@ -242,58 +244,151 @@ projectPension <- function(salaryHistory, tier=1) {
 ## Accepts a salary history tibble and adds a column for the estimated
 ## premiums paid into the system for this employee for each year.
 ## (Combined employer and employee share.)
-projectPremiums <- function(salaryHistory) {
+projectPremiums <- function(salaryHistory, verbose=FALSE) {
     return(salaryHistory %>%
            mutate(premium = ifelse(premium==0, salary * .2265, premium)))
+##           mutate(premium = ifelse(premium==0, salary * .1565, premium)))
 }
 
 
 
+cat("starting one two three", date(), "\n");
 ## Let's model the Queen Creek fire department.  This data is from the
 ## valuation report, the member population table.  This function
 ## produces a list of members, and the function itself can be fed to
 ## the runModel functions in car.r.
-qcModel <- function() {
-    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4),
-                           avgSalary=71362);
-    qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4),
-                           avgSalary=73683, members=qcFire);
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9),
-                           avgSalary=73683, members=qcFire);
+qcModel <- function(verbose=FALSE) {
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier=3,
+                           avgSalary=71362, verbose=verbose);
+    qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4), tier=3,
+                           avgSalary=73683, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier=3,
+                           avgSalary=73683, members=qcFire, verbose=verbose);
 
-    qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4),
-                           avgSalary=80728, members=qcFire);
-    qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9),
-                           avgSalary=84728, members=qcFire);
+    qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4), tier=3,
+                           avgSalary=80728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9), tier=3,
+                           avgSalary=84728, members=qcFire, verbose=verbose);
 
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4),
-                           avgSalary=84728, members=qcFire);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9),
-                           avgSalary=94728, members=qcFire);
-    qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14),
-                           avgSalary=115728, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4), tier=3,
+                           avgSalary=84728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=3,
+                           avgSalary=94728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14), tier=3,
+                           avgSalary=115728, members=qcFire, verbose=verbose);
 
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4),
-                           avgSalary=92728, members=qcFire);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9),
-                           avgSalary=94728, members=qcFire);
-    qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14),
-                           avgSalary=112728, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=3,
+                           avgSalary=92728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9), tier=3,
+                           avgSalary=94728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14), tier=3,
+                           avgSalary=112728, members=qcFire, verbose=verbose);
 
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9),
-                           avgSalary=94730, members=qcFire);
-    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14),
-                           avgSalary=110730, members=qcFire);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
-                           avgSalary=140130, members=qcFire);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9), tier=3,
+                           avgSalary=94730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier=3,
+                           avgSalary=110730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=3,
+                           avgSalary=140130, members=qcFire, verbose=verbose);
 
-    qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14),
-                           avgSalary=120730, members=qcFire);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19),
-                           avgSalary=124730, members=qcFire);
+    qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14), tier=3,
+                           avgSalary=120730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=3,
+                           avgSalary=124730, members=qcFire, verbose=verbose);
 
     return(qcFire);
 }
 
-#qcModelOutput <- runModel(qcModel, N=1, verbose=TRUE);
+qcModelOutputTierThree <- runModel(qcModel, N=250, verbose=FALSE);
 #qcModelPlot <- plotModelOut(qcModelOutput)
+cat("done with three", date(), "\n");
+
+qcModel <- function(verbose=FALSE) {
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier=1,
+                           avgSalary=71362, verbose=verbose);
+    qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4), tier=1,
+                           avgSalary=73683, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier=1,
+                           avgSalary=73683, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4), tier=1,
+                           avgSalary=80728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9), tier=1,
+                           avgSalary=84728, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4), tier=1,
+                           avgSalary=84728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=1,
+                           avgSalary=94728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14), tier=1,
+                           avgSalary=115728, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=1,
+                           avgSalary=92728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9), tier=1,
+                           avgSalary=94728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14), tier=1,
+                           avgSalary=112728, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9), tier=1,
+                           avgSalary=94730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier=1,
+                           avgSalary=110730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=1,
+                           avgSalary=140130, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14), tier=1,
+                           avgSalary=120730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=1,
+                           avgSalary=124730, members=qcFire, verbose=verbose);
+
+    return(qcFire);
+}
+
+qcModelOutputTierOne <- runModel(qcModel, N=250, verbose=FALSE);
+cat("done with one", date(), "\n");
+
+qcModel <- function(verbose=FALSE) {
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier=2,
+                           avgSalary=71362, verbose=verbose);
+    qcFire <- genEmployees(5, ageRange=c(25,29), servRange=c(0,4), tier=2,
+                           avgSalary=73683, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier=2,
+                           avgSalary=73683, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(6, ageRange=c(30,34), servRange=c(0,4), tier=2,
+                           avgSalary=80728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(30,34), servRange=c(5,9), tier=2,
+                           avgSalary=84728, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(0,4), tier=2,
+                           avgSalary=84728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=2,
+                           avgSalary=94728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(7, ageRange=c(35,39), servRange=c(10,14), tier=2,
+                           avgSalary=115728, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=2,
+                           avgSalary=92728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(5,9), tier=2,
+                           avgSalary=94728, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(10, ageRange=c(40,44), servRange=c(10,14), tier=2,
+                           avgSalary=112728, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(5,9), tier=2,
+                           avgSalary=94730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier=2,
+                           avgSalary=110730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=2,
+                           avgSalary=140130, members=qcFire, verbose=verbose);
+
+    qcFire <- genEmployees(2, ageRange=c(45,49), servRange=c(10,14), tier=2,
+                           avgSalary=120730, members=qcFire, verbose=verbose);
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=2,
+                           avgSalary=124730, members=qcFire, verbose=verbose);
+
+    return(qcFire);
+}
+
+qcModelOutputTierTwo <- runModel(qcModel, N=250, verbose=FALSE);
+cat("done with two", date(), "\n");
