@@ -33,6 +33,7 @@ class pensMort:
 
         self.data = df_pubG
         self.mortTable = self.getMortalityTables()
+        m_wb.close()
 
     def getMortalityTables(self):
         ## ET: convert data frame into dictionary
@@ -392,6 +393,7 @@ class pensPop(object):
         m_file = Path("..", "ageServiceTables", "age-service-distribution.xlsx")
         m_wb = openpyxl.load_workbook(m_file, data_only=True)
         asd = m_wb["Cal-T"]
+        m_wb.close()
         df_asd = pd.DataFrame(asd.values)
         df_asd = df_asd.rename(columns=df_asd.iloc[0])
         df_asd = df_asd.set_index("age")
