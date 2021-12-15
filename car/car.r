@@ -845,5 +845,22 @@ altPlotModelOut <- function(modelOut) {
     return(plotOut);
 }
 
+plotModelOutNoLim <- function(modelOut) {
+
+    modelOutSummary <-
+        modelOut %>%
+        group_by(ryear) %>%
+        summarize(car=mean(car),N=n());
+
+    modelOutAvg <- modelOutSummary %>%
+        filter(ryear == 1000) %>% select(car) %>% as.numeric();
+
+    plotOut <- ggplot(modelOutSummary %>% filter(ryear > 1900)) +
+        geom_point(aes(x=ryear, y=car, color=N)) +
+        geom_hline(yintercept=modelOutAvg, color="red") +
+        labs(x="retirement class", y="CAR");
+
+    return(plotOut);
+}
 
 
