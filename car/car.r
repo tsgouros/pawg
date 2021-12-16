@@ -358,12 +358,18 @@ projectCareerFromRecord <- function(salaryHistory, sex="M",
                                      mortClass=mortClass,
                                      tier=tier, verbose=verbose);
 
+    totalYears <- length(backward$year) + length(salaryHistory$year) +
+        length(forward$year) -1;
+
     return(tibble(year=c(backward$year,
                          salaryHistory$year,
                          tail(forward$year, -1)),
                   age=c(backward$age,
                         salaryHistory$age,
                         tail(forward$age, -1)),
+                  sex=rep(sex, totalYears),
+                  mortClass=rep(mortClass, totalYears),
+                  tier=rep(tier, totalYears),
                   service=c(backward$service,
                             salaryHistory$service,
                             tail(forward$service, -1)),
@@ -398,8 +404,13 @@ projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
                                      mortClass=mortClass, tier=tier,
                                      verbose=verbose)
 
+    totalYears <- length(backward$year) + length(forward$year);
+
     return(tibble(year=c(backward$year, forward$year),
                   age=c(backward$age, forward$age),
+                  sex=rep(sex, totalYears),
+                  mortClass=rep(mortClass, totalYears),
+                  tier=rep(tier, totalYears),
                   service=c(backward$service, forward$service),
                   salary=c(backward$salary, forward$salary),
                   fromData=c(backward$fromData, forward$fromData),
@@ -767,7 +778,8 @@ runModelOnce <- function(modelConstructionFunction,
 
 runModel <- function(modelConstructionFunction, N=1,
                      sampler=function(m) {TRUE},
-                     verbose=FALSE) {
+                     verbose=FALSE,
+                     reallyVerbose=FALSE) {
     if (verbose) cat("Starting run on:", date(),"\n");
 
     ## Prepare the output, just a record of years and CAR estimates.
@@ -777,7 +789,7 @@ runModel <- function(modelConstructionFunction, N=1,
         if (verbose) cat("  ", date(), ": model run number", i, "...");
 
         M <- runModelOnce(modelConstructionFunction, sampler=sampler,
-                          verbose=verbose)
+                          verbose=reallyVerbose)
 
         modelOut <- rbind(modelOut, M$modelOut);
 
@@ -787,7 +799,7 @@ runModel <- function(modelConstructionFunction, N=1,
                                     select(car)), "\n");
     }
 
-    if (verbose) cat("Ending run on:", date(),"\n");
+    if (verbose) cat("Ending at:", date(),"\n");
 
     return(modelOut);
 }
