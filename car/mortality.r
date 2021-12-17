@@ -131,6 +131,12 @@ doesMemberDie <- function(memberAge, memberSex, memberStatus,
         }
     }
 
+    ## There are some improbable statuses that are actually sometimes
+    ## seen.
+    if ((memberAge > 80) & (memberStatus == "active")) {
+        memberAge <- 80;
+    }
+
     ## Find the threshold for this member.
     threshold <- as.numeric(table %>%
                             filter(age == memberAge) %>%
