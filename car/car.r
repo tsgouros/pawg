@@ -373,6 +373,7 @@ projectCareerFromRecord <- function(salaryHistory, sex="M",
                   service=c(backward$service,
                             salaryHistory$service,
                             tail(forward$service, -1)),
+                  hireYear=rep(min(backward$year), totalYears),
                   salary=c(backward$salary,
                            salaryHistory$salary,
                            tail(forward$salary, -1)),
@@ -412,6 +413,7 @@ projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
                   mortClass=rep(mortClass, totalYears),
                   tier=rep(tier, totalYears),
                   service=c(backward$service, forward$service),
+                  hireYear=rep(min(backward$year), totalYears),
                   salary=c(backward$salary, forward$salary),
                   fromData=c(backward$fromData, forward$fromData),
                   premium=rep(0, length(backward$salary) +
@@ -808,7 +810,7 @@ runModel <- function(modelConstructionFunction, N=1,
 ## Some useful output routines.
 library(ggplot2)
 
-plotModelOut <- function(modelOut) {
+plotModelOut <- function(modelOut, xlimits=c(2020,2065), ylimits=c(0,0.1)) {
 
     modelOutSummary <-
         modelOut %>%
@@ -820,14 +822,16 @@ plotModelOut <- function(modelOut) {
 
     plotOut <- ggplot(modelOutSummary %>% filter(ryear > 1900)) +
         geom_point(aes(x=ryear, y=car, color=N)) +
-        ylim(c(0,.1)) +
+        xlim(xlimits) +
+        ylim(ylimits) +
         geom_hline(yintercept=modelOutAvg, color="red") +
         labs(x="retirement class", y="CAR");
 
     return(plotOut);
 }
 
-altPlotModelOut <- function(modelOut) {
+altPlotModelOut <- function(modelOut,
+                            xlimits=c(2020,2065), ylimits=c(-0.05,0.1)) {
 
     modelOutSummary <-
         modelOut %>%
@@ -844,13 +848,16 @@ altPlotModelOut <- function(modelOut) {
 
     plotOut <- ggplot(modelOutAug %>% filter(ryear > 1900)) +
         geom_point(aes(x=ryear, y=car, color=abs(delta))) +
-        ylim(c(-0.05,.1)) +
-        xlim(c(2020,2065)) +
+        ylim(ylimits) +
+        xlim(xlimits) +
         scale_colour_gradientn(
             colours = c("#ff0000","#aa3333","#665555","#777777",
                         "#888888","#aaaaaa","#cccccc","#eeeeee"),
             values = c(0.0, 0.01, 0.04, 0.09, 0.13, 0.35, 0.60, 0.80, 1.0))+
         geom_hline(yintercept=modelOutAvg, color="blue") +
+        annotate("text", label=sprintf("%5.2f%%",modelOutAvg*100),
+                 x=xlimits[2], y=modelOutAvg, color="blue",
+                 vjust=-0.3,hjust=0.5) +
         theme(legend.position="NONE") +
         labs(x="retirement class", y="CAR");
 
