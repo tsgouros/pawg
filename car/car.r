@@ -358,8 +358,9 @@ projectCareerFromRecord <- function(salaryHistory, sex="M",
                                      mortClass=mortClass,
                                      tier=tier, verbose=verbose);
 
-    totalYears <- length(backward$year) + length(salaryHistory$year) +
+    totalNYears <- length(backward$year) + length(salaryHistory$year) +
         length(forward$year) -1;
+    totalYears  <- c(backward$year, forward$year);
 
     return(tibble(year=c(backward$year,
                          salaryHistory$year,
@@ -367,13 +368,13 @@ projectCareerFromRecord <- function(salaryHistory, sex="M",
                   age=c(backward$age,
                         salaryHistory$age,
                         tail(forward$age, -1)),
-                  sex=rep(sex, totalYears),
-                  mortClass=rep(mortClass, totalYears),
-                  tier=rep(tier, totalYears),
+                  sex=rep(sex, totalNYears),
+                  mortClass=rep(mortClass, totalNYears),
+                  tier=rep(tier, totalNYears),
                   service=c(backward$service,
                             salaryHistory$service,
                             tail(forward$service, -1)),
-                  hireYear=rep(min(backward$year), totalYears),
+                  hireYear=rep(min(totalYears), totalNYears),
                   salary=c(backward$salary,
                            salaryHistory$salary,
                            tail(forward$salary, -1)),
@@ -405,15 +406,16 @@ projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
                                      mortClass=mortClass, tier=tier,
                                      verbose=verbose)
 
-    totalYears <- length(backward$year) + length(forward$year);
+    totalYears <- c(backward$year, forward$year);
+    totalNYears <- length(totalYears);
 
     return(tibble(year=c(backward$year, forward$year),
                   age=c(backward$age, forward$age),
-                  sex=rep(sex, totalYears),
-                  mortClass=rep(mortClass, totalYears),
-                  tier=rep(tier, totalYears),
+                  sex=rep(sex, totalNYears),
+                  mortClass=rep(mortClass, totalNYears),
+                  tier=rep(tier, totalNYears),
                   service=c(backward$service, forward$service),
-                  hireYear=rep(min(backward$year), totalYears),
+                  hireYear=rep(min(totalYears), totalNYears),
                   salary=c(backward$salary, forward$salary),
                   fromData=c(backward$fromData, forward$fromData),
                   premium=rep(0, length(backward$salary) +
@@ -781,11 +783,15 @@ runModelOnce <- function(modelConstructionFunction,
 runModel <- function(modelConstructionFunction, N=1,
                      sampler=function(m) {TRUE},
                      verbose=FALSE,
-                     reallyVerbose=FALSE) {
+                     reallyVerbose=FALSE,
+                     audit=FALSE) {
     if (verbose) cat("Starting run on:", date(),"\n");
 
-    ## Prepare the output, just a record of years and CAR estimates.
+    ## Prepare the main output, just a record of years and CAR estimates.
     modelOut <- tibble(ryear=c(), car=c());
+
+    ## We will also collect the output from each model run, for audit purposes.
+    modelColl <- list();
 
     for (i in 1:N) {
         if (verbose) cat("  ", date(), ": model run number", i, "...");
@@ -794,6 +800,7 @@ runModel <- function(modelConstructionFunction, N=1,
                           verbose=reallyVerbose)
 
         modelOut <- rbind(modelOut, M$modelOut);
+        modelColl[[i]] <- M;
 
         if (verbose) cat("runModel: CAR =",
                          as.numeric(M$modelOut %>%
@@ -803,7 +810,11 @@ runModel <- function(modelConstructionFunction, N=1,
 
     if (verbose) cat("Ending at:", date(),"\n");
 
-    return(modelOut);
+    if (audit) {
+        return(list(modelOut, modelColl));
+    } else {
+        return(modelOut);
+    }
 }
 
 
@@ -855,7 +866,7 @@ altPlotModelOut <- function(modelOut,
                         "#888888","#aaaaaa","#cccccc","#eeeeee"),
             values = c(0.0, 0.01, 0.04, 0.09, 0.13, 0.35, 0.60, 0.80, 1.0))+
         geom_hline(yintercept=modelOutAvg, color="blue") +
-        annotate("text", label=sprintf("%5.2f%%",modelOutAvg*100),
+        annotate("text", label=sprintf("%4.1f%%",modelOutAvg*100),
                  x=xlimits[2], y=modelOutAvg, color="blue",
                  vjust=-0.3,hjust=0.5) +
         theme(legend.position="NONE") +
