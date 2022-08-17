@@ -1,5 +1,8 @@
 library(readxl)
 library(dplyr)
+source("car.r")
+source("qc.r")
+
 
 tmp <- read_excel("../Queen_Creek_Fire_2.xlsx", sheet="Queen_Creek_Fire");
 qcMemberData <- tmp %>%
@@ -102,57 +105,58 @@ genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
 
 ##qcFireFromData <- genEmployeesFromData(qcMemberData, verbose=FALSE)
 cat(date(),"\n");
-qcModelOutputFromData <-
+qcModelOutputFromDataAlt <-
     runModel(function(verbose=FALSE) {
         genEmployeesFromData(qcMemberData, verbose=verbose)
-    }, verbose=FALSE, N=250);
-qcModelPlotFromData <- plotModelOut(qcModelOutputFromData)
+    }, verbose=FALSE, N=5);
+##qcModelPlotFromData <- plotModelOut(qcModelOutputFromData)
 cat(date(), "done with all\n");
 
-qcModelOutputFromDataTierOne <-
-    runModel(function(verbose=FALSE) {
-        genEmployeesFromData(qcMemberData %>% filter(tier==1), verbose=verbose)
-    }, verbose=FALSE, N=250, sampler=function(m) { m$tier==1 });
-cat(date(), "done with one\n");
+## qcModelOutputFromDataTierOne <-
+##     runModel(function(verbose=FALSE) {
+##         genEmployeesFromData(qcMemberData %>% filter(tier==1), verbose=verbose)
+##     }, verbose=FALSE, N=250, sampler=function(m) { m$tier==1 });
+## cat(date(), "done with one\n");
 
-qcModelOutputFromDataTierTwo <-
-    runModel(function(verbose=FALSE) {
-        genEmployeesFromData(qcMemberData %>% filter(tier==2), verbose=verbose)
-    }, verbose=FALSE, N=250, sampler=function(m) { m$tier==2 });
-cat(date(), "done with two\n");
+## qcModelOutputFromDataTierTwo <-
+##     runModel(function(verbose=FALSE) {
+##         genEmployeesFromData(qcMemberData %>% filter(tier==2), verbose=verbose)
+##     }, verbose=FALSE, N=250, sampler=function(m) { m$tier==2 });
+## cat(date(), "done with two\n");
 
-qcModelOutputFromDataTierThree <-
-    runModel(function(verbose=FALSE) {
-        genEmployeesFromData(qcMemberData %>% filter(tier==3), verbose=verbose)
-    }, verbose=FALSE, N=250, sampler=function(m) { m$tier==3 });
-cat(date(), "done with three\n");
+## qcModelOutputFromDataTierThree <-
+##     runModel(function(verbose=FALSE) {
+##         genEmployeesFromData(qcMemberData %>% filter(tier==3), verbose=verbose)
+##     }, verbose=FALSE, N=250, sampler=function(m) { m$tier==3 });
+## cat(date(), "done with three\n");
+
 cat(date(),"\n");
 date()
 
 
-dotplot.all <- plotModelOut(qcModelOutputFromData)
-ggsave("car-all.png",
+dotplot.all.alt <- altPlotModelOut(qcModelOutputFromDataAlt)
+ggsave("../../report/images/qc-from-data.png",
        plot=dotplot.all,
        device="png",
        width=5.5, height=4, units="in")
 
-dotplot.one <- plotModelOut(qcModelOutputFromDataTierOne)
-ggsave("car-tier-1.png",
-       plot=dotplot.one,
-       device="png",
-       width=5.5, height=4, units="in")
+## dotplot.one <- plotModelOut(qcModelOutputFromDataTierOne)
+## ggsave("car-tier-1.png",
+##        plot=dotplot.one,
+##        device="png",
+##        width=5.5, height=4, units="in")
 
-dotplot.two <- plotModelOut(qcModelOutputFromDataTierTwo)
-ggsave("car-tier-2.png",
-       plot=dotplot.two,
-       device="png",
-       width=5.5, height=4, units="in")
+## dotplot.two <- plotModelOut(qcModelOutputFromDataTierTwo)
+## ggsave("car-tier-2.png",
+##        plot=dotplot.two,
+##        device="png",
+##        width=5.5, height=4, units="in")
 
-dotplot.three <- plotModelOut(qcModelOutputFromDataTierThree)
-ggsave("car-tier-3.png",
-       plot=dotplot.three,
-       device="png",
-       width=5.5, height=4, units="in")
+## dotplot.three <- plotModelOut(qcModelOutputFromDataTierThree)
+## ggsave("car-tier-3.png",
+##        plot=dotplot.three,
+##        device="png",
+##        width=5.5, height=4, units="in")
 
 
 
