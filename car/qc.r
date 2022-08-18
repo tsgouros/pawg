@@ -9,7 +9,7 @@ source("car.r")
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
-doesMemberSeparate <- function(age, service, status, tier=1,
+doesMemberSeparate <- function(age, service, status, tier="1",
                                verbose=FALSE) {
     ## If this is not currently an active employee, get out.
     if (status != "active") return(status);
@@ -25,7 +25,7 @@ doesMemberSeparate <- function(age, service, status, tier=1,
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
+doesMemberRetire <- function(age, service, status, tier="1", verbose=FALSE) {
     ## If already retired, get out.
     if ((status == "retired") | (status == "deceased")) return(status);
 
@@ -41,7 +41,7 @@ doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
                      ", tier: ", tier, " begin: ", status, "...",
                      sep="");
 
-    if (tier == 1) {
+    if (tier == "1") {
 
         if ((age >= 62) && (completedYears <= 20)) {
             if ( ((age == 62) && (runif(1) > 0.4)) |
@@ -58,20 +58,20 @@ doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
             ## Roll the dice.
             if (runif(1) < rates[completedYears - 19]) status <- "retired";
         }
-    } else if (tier == 2) {
+    } else if (tier == "2") {
         if ((age >= 53) && (completedYears >= 15)) {
             rates <- c(0.22, 0.26, 0.19, 0.32, 0.30,
                        0.30, 0.30, 0.55, 0.55, 0.55,
                        0.55, 1.00);
             if (runif(1) < rates[min(age - 52, 12)]) status <- "retired";
         }
-    } else if (tier == 3) {
+    } else if (tier == "3") {
         if ((age >= 55) && (completedYears >= 15)) {
             rates <- c(0.19, 0.32, 0.30, 0.30, 0.30,
                        0.55, 0.55, 0.55, 0.55, 1.00);
             if (runif(1) < rates[min(age - 54, 10)]) status <- "retired";
         }
-    } else if (tier == 0) {
+    } else if (tier == "0") {
         ## There are "tier 0" people in QC Fire.  They are already
         ## retired, and receiving a pension.  There are employer
         ## contributions happening on their behalf, but they are otherwise
@@ -86,7 +86,7 @@ doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
 }
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
-                                     mortClass="General", tier=1,
+                                     mortClass="General", tier="1",
                                      verbose=FALSE) {
     ## If already retired or disabled, don't change anything and get out.
     if ((status == "retired") | (status == "deceased") |
@@ -106,7 +106,7 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
 
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.
-projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
+projectSalaryDelta <- function(year, age, salary, service=1, tier="1") {
 
     if (age < 25) {
         out <- 1.075;
@@ -125,7 +125,7 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
     }
 
     ## Tier 3 salaries are limited.  ??
-##    if (tier == 3) {
+##    if (tier == "3") {
 ##        iyear <- max(year, 2020);
 ##        limit <- 110000 * 1.02^(year - 2020);
 ##        out <- min(out, (out - limit) / limit);
@@ -134,12 +134,12 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1) {
     return(out);
 }
 
-projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
+projectPension <- function(salaryHistory, tier="1", verbose=FALSE) {
 
     service <- sum(salaryHistory$salary > 0);
 
     ## Calculate the base salary from which to calculate the pension.
-    if (tier == 1) {
+    if (tier == "1") {
         # Find the maximum 3-year period.
         s <- tail(salaryHistory$salary[salaryHistory$salary > 0], 20);
         threeYears <- c(s, 0, 0) + c(0, s, 0) + c(0, 0, s);
@@ -156,7 +156,7 @@ projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
         }
 
         startingPension <- min(0.8 * avgSalary, startingPension);
-    } else if (tier == 2) {
+    } else if (tier == "2") {
         # Find the maximum 5-year period.
         s <- tail(salaryHistory$salary[salaryHistory$salary > 0], 20);
 
@@ -183,7 +183,7 @@ projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
         startingPension <- avgSalary * (service * benefitMultiplier);
 
         startingPension <- min(0.8 * avgSalary, startingPension);
-    } else if (tier == 3) {
+    } else if (tier == "3") {
         # Find the maximum 5-year period.
         s <- tail(salaryHistory %>%
                   mutate(X=pmin(salary, 110000 * (1.02^(pmax(0, year-2020))))) %>%
@@ -218,7 +218,7 @@ projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
         startingPension <- avgSalary * (service * benefitMultiplier);
 
         startingPension <- min(0.8 * avgSalary, startingPension);
-    } else if (tier == 0) {
+    } else if (tier == "0") {
         ## The tier 0 people can retire again but they don't get
         ## another pension.
         startingPension <- 0.0;
@@ -261,7 +261,7 @@ projectPremiums <- function(salaryHistory, verbose=FALSE) {
 }
 
 
-if (FALSE) {
+if (TRUE) {
 cat("starting one two three", date(), "\n");
 ## Let's model the Queen Creek fire department.  This data is from the
 ## valuation report, the member population table.  This function
@@ -271,81 +271,81 @@ cat("starting one two three", date(), "\n");
 ## Page: 23 of 44 (PDF page number)
 qcModel <- function(verbose=FALSE) {
     ## Ages 20-24
-    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier=2,
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier="2",
                            avgSalary=78545, verbose=verbose);
-    qcFire <- genEmployees(4, ageRange=c(20,24), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(4, ageRange=c(20,24), servRange=c(0,4), tier="3",
                            avgSalary=57174, verbose=verbose);
 
     ## Ages 25-29  Note that in the document, pay values are averaged across
     ## service classes, which is totally unhelpful. We have attempted to back
     ## out average values from the numbers of members and the average values from
     ## previous lines.
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(0,4), tier="1",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier="1",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(25,29), servRange=c(0,4), tier=2,
+    qcFire <- genEmployees(2, ageRange=c(25,29), servRange=c(0,4), tier="2",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(7, ageRange=c(25,29), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(7, ageRange=c(25,29), servRange=c(0,4), tier="3",
                            avgSalary=61951, members=qcFire, verbose=verbose);
 
     ## Ages 30-34  Assume salary for service range 5-9 is 1.3x 0-4.
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(0,4), tier="1",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(3, ageRange=c(30,34), servRange=c(0,4), tier=2,
+    qcFire <- genEmployees(3, ageRange=c(30,34), servRange=c(0,4), tier="2",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier="1",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier=2,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier="2",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(7, ageRange=c(30,34), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(7, ageRange=c(30,34), servRange=c(0,4), tier="3",
                            avgSalary=64261, members=qcFire, verbose=verbose);
 
     ## Ages 35-39   Assume salary for service range 10-14 is 1.7x 0-4.
     ##              Assume salary for service range 15-19 is 2x 0-4.
-    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(0,4), tier=2,
+    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(0,4), tier="2",
                            avgSalary=72266, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier="1",
                            avgSalary=93946, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=2,
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier="2",
                            avgSalary=93946, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(10,14), tier="1",
                            avgSalary=122853, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(10,14), tier=2,
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(10,14), tier="2",
                            avgSalary=122853, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(15,19), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(15,19), tier="1",
                            avgSalary=144533, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(4, ageRange=c(35,39), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(4, ageRange=c(35,39), servRange=c(0,4), tier="3",
                            avgSalary=71214, members=qcFire, verbose=verbose);
 
     ## Ages 40-44
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=2,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier="2",
                            avgSalary=73960, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier="1",
                            avgSalary=96148, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier=2,
+    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier="2",
                            avgSalary=96148, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(6, ageRange=c(40,44), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(6, ageRange=c(40,44), servRange=c(10,14), tier="1",
                            avgSalary=125733, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(10,14), tier=2,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(10,14), tier="2",
                            avgSalary=125733, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier="3",
                            avgSalary=63883, members=qcFire, verbose=verbose);
 
     ## Ages 45-49
-    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier="1",
                            avgSalary=137705, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier="1",
                            avgSalary=162007, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(0,4), tier="3",
                            avgSalary=77123, members=qcFire, verbose=verbose);
 
     ## Ages 50-54
-    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(5,9), tier=2,
+    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(5,9), tier="2",
                            avgSalary=100591, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(5, ageRange=c(50,54), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(5, ageRange=c(50,54), servRange=c(10,14), tier="1",
                            avgSalary=131543, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(15,19), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(15,19), tier="1",
                            avgSalary=154756, members=qcFire, verbose=verbose);
 
     return(qcFire);
@@ -361,81 +361,81 @@ cat("done with all", date(), "\n");
 cat("starting Tier One", date(), "\n");
 qcModel <- function(verbose=FALSE) {
     ## Ages 20-24
-    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier="1",
                            avgSalary=78545, verbose=verbose);
-    qcFire <- genEmployees(4, ageRange=c(20,24), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(4, ageRange=c(20,24), servRange=c(0,4), tier="1",
                            avgSalary=57174, verbose=verbose);
 
     ## Ages 25-29  Note that in the document, pay values are averaged across
     ## service classes, which is totally unhelpful. We have attempted to back
     ## out average values from the numbers of members and the average values from
     ## previous lines.
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(0,4), tier="1",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier="1",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(25,29), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(25,29), servRange=c(0,4), tier="1",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(7, ageRange=c(25,29), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(7, ageRange=c(25,29), servRange=c(0,4), tier="1",
                            avgSalary=61951, members=qcFire, verbose=verbose);
 
     ## Ages 30-34  Assume salary for service range 5-9 is 1.3x 0-4.
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(0,4), tier="1",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(3, ageRange=c(30,34), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(3, ageRange=c(30,34), servRange=c(0,4), tier="1",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier="1",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier="1",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(7, ageRange=c(30,34), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(7, ageRange=c(30,34), servRange=c(0,4), tier="1",
                            avgSalary=64261, members=qcFire, verbose=verbose);
 
     ## Ages 35-39   Assume salary for service range 10-14 is 1.7x 0-4.
     ##              Assume salary for service range 15-19 is 2x 0-4.
-    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(0,4), tier="1",
                            avgSalary=72266, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier="1",
                            avgSalary=93946, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier="1",
                            avgSalary=93946, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(10,14), tier="1",
                            avgSalary=122853, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(10,14), tier="1",
                            avgSalary=122853, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(15,19), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(15,19), tier="1",
                            avgSalary=144533, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(4, ageRange=c(35,39), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(4, ageRange=c(35,39), servRange=c(0,4), tier="1",
                            avgSalary=71214, members=qcFire, verbose=verbose);
 
     ## Ages 40-44
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier="1",
                            avgSalary=73960, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier="1",
                            avgSalary=96148, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier="1",
                            avgSalary=96148, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(6, ageRange=c(40,44), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(6, ageRange=c(40,44), servRange=c(10,14), tier="1",
                            avgSalary=125733, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(10,14), tier="1",
                            avgSalary=125733, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier="1",
                            avgSalary=63883, members=qcFire, verbose=verbose);
 
     ## Ages 45-49
-    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier="1",
                            avgSalary=137705, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier="1",
                            avgSalary=162007, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(0,4), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(0,4), tier="1",
                            avgSalary=77123, members=qcFire, verbose=verbose);
 
     ## Ages 50-54
-    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(5,9), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(5,9), tier="1",
                            avgSalary=100591, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(5, ageRange=c(50,54), servRange=c(10,14), tier=1,
+    qcFire <- genEmployees(5, ageRange=c(50,54), servRange=c(10,14), tier="1",
                            avgSalary=131543, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(15,19), tier=1,
+    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(15,19), tier="1",
                            avgSalary=154756, members=qcFire, verbose=verbose);
 
     return(qcFire);
@@ -450,81 +450,81 @@ ggsave("../../report/images/qc-from-model-tier-one.png",
 cat("starting Tier Three\n");
 qcModel <- function(verbose=FALSE) {
     ## Ages 20-24
-    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(20,24), servRange=c(0,4), tier="3",
                            avgSalary=78545, verbose=verbose);
-    qcFire <- genEmployees(4, ageRange=c(20,24), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(4, ageRange=c(20,24), servRange=c(0,4), tier="3",
                            avgSalary=57174, verbose=verbose);
 
     ## Ages 25-29  Note that in the document, pay values are averaged across
     ## service classes, which is totally unhelpful. We have attempted to back
     ## out average values from the numbers of members and the average values from
     ## previous lines.
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(0,4), tier="3",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(25,29), servRange=c(5,9), tier="3",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(25,29), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(25,29), servRange=c(0,4), tier="3",
                            avgSalary=77994, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(7, ageRange=c(25,29), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(7, ageRange=c(25,29), servRange=c(0,4), tier="3",
                            avgSalary=61951, members=qcFire, verbose=verbose);
 
     ## Ages 30-34  Assume salary for service range 5-9 is 1.3x 0-4.
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(0,4), tier="3",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(3, ageRange=c(30,34), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(3, ageRange=c(30,34), servRange=c(0,4), tier="3",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier="3",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(30,34), servRange=c(5,9), tier="3",
                            avgSalary=83872, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(7, ageRange=c(30,34), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(7, ageRange=c(30,34), servRange=c(0,4), tier="3",
                            avgSalary=64261, members=qcFire, verbose=verbose);
 
     ## Ages 35-39   Assume salary for service range 10-14 is 1.7x 0-4.
     ##              Assume salary for service range 15-19 is 2x 0-4.
-    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(0,4), tier="3",
                            avgSalary=72266, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier="3",
                            avgSalary=93946, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(35,39), servRange=c(5,9), tier="3",
                            avgSalary=93946, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(10,14), tier=3,
+    qcFire <- genEmployees(3, ageRange=c(35,39), servRange=c(10,14), tier="3",
                            avgSalary=122853, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(10,14), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(10,14), tier="3",
                            avgSalary=122853, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(15,19), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(35,39), servRange=c(15,19), tier="3",
                            avgSalary=144533, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(4, ageRange=c(35,39), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(4, ageRange=c(35,39), servRange=c(0,4), tier="3",
                            avgSalary=71214, members=qcFire, verbose=verbose);
 
     ## Ages 40-44
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier="3",
                            avgSalary=73960, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier="3",
                            avgSalary=96148, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(40,44), servRange=c(5,9), tier="3",
                            avgSalary=96148, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(6, ageRange=c(40,44), servRange=c(10,14), tier=3,
+    qcFire <- genEmployees(6, ageRange=c(40,44), servRange=c(10,14), tier="3",
                            avgSalary=125733, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(10,14), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(10,14), tier="3",
                            avgSalary=125733, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(2, ageRange=c(40,44), servRange=c(0,4), tier="3",
                            avgSalary=63883, members=qcFire, verbose=verbose);
 
     ## Ages 45-49
-    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier=3,
+    qcFire <- genEmployees(4, ageRange=c(45,49), servRange=c(10,14), tier="3",
                            avgSalary=137705, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(15,19), tier="3",
                            avgSalary=162007, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(0,4), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(45,49), servRange=c(0,4), tier="3",
                            avgSalary=77123, members=qcFire, verbose=verbose);
 
     ## Ages 50-54
-    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(5,9), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(5,9), tier="3",
                            avgSalary=100591, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(5, ageRange=c(50,54), servRange=c(10,14), tier=3,
+    qcFire <- genEmployees(5, ageRange=c(50,54), servRange=c(10,14), tier="3",
                            avgSalary=131543, members=qcFire, verbose=verbose);
-    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(15,19), tier=3,
+    qcFire <- genEmployees(1, ageRange=c(50,54), servRange=c(15,19), tier="3",
                            avgSalary=154756, members=qcFire, verbose=verbose);
 
     return(qcFire);

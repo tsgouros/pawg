@@ -38,7 +38,7 @@ source("mortality.r")
 ## These functions (doIseparate and doIretire) give the probability of
 ## separation or retirement, given the age and service years of the
 ## employee.
-doesMemberSeparate <- function(age, service, status, tier=1, verbose=FALSE) {
+doesMemberSeparate <- function(age, service, status, tier="1", verbose=FALSE) {
     cat("Running default doesMemberSeparate.\n");
 
     ## If this is not currently an active employee, get out.
@@ -55,7 +55,7 @@ doesMemberSeparate <- function(age, service, status, tier=1, verbose=FALSE) {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
+doesMemberRetire <- function(age, service, status, tier="1", verbose=FALSE) {
     cat("Running default doesMemberRetire.\n");
 
     ## If already retired, get out.
@@ -89,7 +89,7 @@ doesMemberRetire <- function(age, service, status, tier=1, verbose=FALSE) {
 }
 
 doesMemberBecomeDisabled <- function(age, sex, service, status,
-                                     mortClass="General", tier=1,
+                                     mortClass="General", tier="1",
                                      verbose=FALSE) {
     cat("Running default doesMemberBecomeDisabled.\n");
 
@@ -118,7 +118,7 @@ source("mortality.r")
 ## The assumed salary increment, from the table of merit increases in
 ## each valuation report.  Tier refers to any kind of subdivision
 ## among the members.
-projectSalaryDelta <- function(year, age, salary, service=1, tier=1,
+projectSalaryDelta <- function(year, age, salary, service=1, tier="1",
                                verbose=FALSE) {
     cat("Running default projectSalaryDelta.\n");
 
@@ -141,7 +141,7 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier=1,
     return(out);
 }
 
-projectPension <- function(salaryHistory, tier=1, verbose=FALSE) {
+projectPension <- function(salaryHistory, tier="1", verbose=FALSE) {
     cat("Running default projectPension.\n");
 
     startingPension <- max(salaryHistory$salary) * 0.55;
@@ -186,7 +186,7 @@ projectPremiums <- function(salaryHistory, verbose=FALSE) {
 ## mortality tables to fill out the career of this person.
 projectCareer <- function(year=0, age=0, service=0, salary=0,
                           salaryHistory=NA, sex="M",
-                          mortClass="General", tier=1,
+                          mortClass="General", tier="1",
                           verbose=FALSE) {
 
     ## Test if the salaryHistory data frame is empty.
@@ -213,7 +213,7 @@ projectCareer <- function(year=0, age=0, service=0, salary=0,
 simulateCareerBackward <- function(year, age, service, salary,
                                    sex="M", status="active",
                                    mortClass="General",
-                                   tier=1, verbose=FALSE) {
+                                   tier="1", verbose=FALSE) {
 
     salaries <- c(salary);
     ages <- c(age);
@@ -260,7 +260,7 @@ simulateCareerBackward <- function(year, age, service, salary,
 simulateCareerForward <- function(year, age, service, salary,
                                   sex="M", status="active",
                                   mortClass="General",
-                                  tier=1, verbose=FALSE) {
+                                  tier="1", verbose=FALSE) {
 
     salaries <- c(salary);
     ages <- c(age);
@@ -337,7 +337,7 @@ simulateCareerForward <- function(year, age, service, salary,
 ## and life.  The salaryHistory arg is a tibble with year, salary,
 ## age, service, and status columns.
 projectCareerFromRecord <- function(salaryHistory, sex="M",
-                                    mortClass="General", tier=1,
+                                    mortClass="General", tier="1",
                                     verbose=FALSE) {
 
     backward <- simulateCareerBackward(head(salaryHistory$year, 1),
@@ -393,7 +393,7 @@ projectCareerFromRecord <- function(salaryHistory, sex="M",
 ## Given a single year's record, project what a career might look
 ## like.  We assume that the status is 'active' for the given year.
 projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
-                                     mortClass="General", tier=1,
+                                     mortClass="General", tier="1",
                                      verbose=FALSE) {
 
     backward <- simulateCareerBackward(year, age, service, salary,
@@ -436,7 +436,7 @@ member <- function(age=0, service=0, salary=0,
                    id="none", salaryHistory=NA,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
-                   sex="M", mortClass="General", tier=1,
+                   sex="M", mortClass="General", tier="1",
                    status="active", note="", verbose=FALSE) {
 
     ## Set up the facts of this member's life.
@@ -618,7 +618,7 @@ print.memberList <- function(ml, ...) {
 ## them to the input list of members.
 genEmployees <- function (N=1, ageRange=c(20,25), servRange=c(0,5),
                          avgSalary=75000, members=memberList(),
-                         sex="M", tier=1,
+                         sex="M", tier="1",
                          class="General", status="active",
                          verbose=FALSE) {
 

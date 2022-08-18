@@ -4,7 +4,7 @@ source("car.r")
 source("qc.r")
 
 
-tmp <- read_excel("../Queen_Creek_Fire_2.xlsx", sheet="Queen_Creek_Fire");
+tmp <- read_excel("../../../../21/pension/pawg/Queen_Creek_Fire_2.xlsx", sheet="Queen_Creek_Fire");
 qcMemberData <- tmp %>%
     mutate(year=as.numeric(substr(ppe_dt, 1, 4)),
            birth=as.numeric(substr(dob, 1, 4)),
@@ -12,7 +12,7 @@ qcMemberData <- tmp %>%
     group_by(full_name, year) %>%
     summarize(dob=first(birth),
               name=first(name),
-              tier=first(tier_no),
+              tier=as.character(first(tier_no)),
               status=last(employment_status),
               ee=sum(ee_amount, na.rm=TRUE),
               er=sum(er_amount, na.rm=TRUE),
@@ -47,7 +47,7 @@ genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
             group_by(name) %>%
             summarize(birthYear=first(birthYear),
                       hireYear=first(hireYear),
-                      tier=first(tier),
+                      tier=as.character(first(tier)),
                       status=last(status))
 
         if (verbose) print(memberScalarData);
@@ -88,7 +88,7 @@ genEmployeesFromData <- function(memberTbl, verbose=FALSE) {
                     hireYear = memberScalarData %>%
                         select(hireYear) %>% as.numeric(),
                     tier = memberScalarData %>%
-                        select(tier) %>% as.numeric(),
+                        select(tier),
                     mortClass="Safety",
                     note=uname,
                     sex="M",
