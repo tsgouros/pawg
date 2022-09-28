@@ -56,8 +56,9 @@ findRate <- function(cashFlow, futureVal=0, flowName="flow",
     }
 
     ## Check to see if this is empty or pathological.  We have to have
-    ## at least one entry above zero.
-    if (cashFlow %>% select(flow) %>% max() <= 0) return(1);
+    ## at least one entry above zero and one entry below.
+    bounds <- cashFlow %>% summarize(max=max(flow), min=min(flow));
+    if (bounds$max * bounds$min >= 0) return(NA);
 
     if (verbose) cat("flowName:", flowName, "\n");
 
@@ -65,7 +66,9 @@ findRate <- function(cashFlow, futureVal=0, flowName="flow",
     if (verbose) cat("First guess =", currentGuess, "\n");
 
     oldGuess <- currentGuess;
+    iterCount <- 0;
     for (i in 1:maxIter) {
+        iterCount <- iterCount + 1;
         if (verbose) cat(i, "> ");
         currentGuess <- newtonStep(oldGuess, cashFlow, futureVal, verbose);
 
@@ -89,6 +92,11 @@ findRate <- function(cashFlow, futureVal=0, flowName="flow",
 
         if (tolerance > abs(1 - (currentGuess / oldGuess))) break;
         oldGuess <- currentGuess;
+    }
+
+    if (iterCount >= maxIter) {
+        print(as.data.frame(cashFlow))
+        return(NA);
     }
 
     return(currentGuess);
