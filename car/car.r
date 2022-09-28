@@ -165,7 +165,7 @@ projectPension <- function(salaryHistory, tier="1", verbose=FALSE) {
 ## Accepts a salary history tibble and adds a column for the estimated
 ## premiums paid into the system for this employee for each year.
 ## (Combined employer and employee share.)
-projectPremiums <- function(salaryHistory, verbose=FALSE) {
+projectPremiums <- function(salaryHistory, tier="A", verbose=FALSE) {
     cat("Running default projectPremiums.\n");
 
     return(salaryHistory %>%
@@ -215,6 +215,11 @@ simulateCareerBackward <- function(year, age, service, salary,
                                    mortClass="General",
                                    tier="1", verbose=FALSE) {
 
+    if (verbose) cat("\nIn", year, "--simulating career backward for--\n",
+                     "age:", age, "service:", service, "salary:", salary,
+                     "status:", status, "mortClass:", mortClass, "tier:", tier,
+                     "\n");
+
     salaries <- c(salary);
     ages <- c(age);
     services <- c(service);
@@ -262,17 +267,17 @@ simulateCareerForward <- function(year, age, service, salary,
                                   mortClass="General",
                                   tier="1", verbose=FALSE) {
 
+    if (verbose) cat("\nIn", year, "--simulating career forward for--\n",
+                     "age:", age, "service:", service, "salary:", salary,
+                     "status:", status, "mortClass:", mortClass, "tier:", tier,
+                     "\n");
+
     salaries <- c(salary);
     ages <- c(age);
     services <- c(service);
     statuses <- c(as.character(status));
     fromData <- c(TRUE);  ## The first year is from data, the rest are sims.
     years <- c(year);
-
-    if (verbose) cat("\nIn", year, "--simulating career forward for--\n",
-                     "age:", age, "service:", service, "salary:", salary,
-                     "status:", status, "mortClass:", mortClass, "tier:", tier,
-                     "\n");
 
     ## Now march forward through a simulated career.  Stop when you
     ## hit "deceased."
@@ -420,9 +425,7 @@ projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
                   fromData=c(backward$fromData, forward$fromData),
                   premium=rep(0, length(backward$salary) +
                                  length(forward$salary)),
-                  status=factor(c(backward$status, forward$status),
-                                levels=c("active", "separated",
-                                         "retired", "deceased"))));
+                  status=factor(c(backward$status, forward$status))));
 }
 
 ## Here's an object for a member, initialized for some specific year.
@@ -432,12 +435,20 @@ projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
 ## tier argument is a string that can be used in whatever way is
 ## appropriate to reflect different classes of retirement benefits and
 ## salaries among plan members.
+##
+## The point of this function is to use the data given for some specific year
+## and individual, and generate a cash flow for that individual's career and
+## retirement. (This is the salaryHistory data frame.)
 member <- function(age=0, service=0, salary=0,
                    id="none", salaryHistory=NA,
                    currentYear=2018, birthYear=0,
                    hireYear=0, sepYear=0, retireYear=0,
                    sex="M", mortClass="General", tier="1",
                    status="active", note="", verbose=FALSE) {
+
+    ## The possible status codes as of this telling are: active,
+    ##   separated, retired, retired/survivor, deceased,
+    ##   disabled/accident, and disabled/ordinary.
 
     ## Set up the facts of this member's life.
     if (is.null(dim(salaryHistory))) {
@@ -458,8 +469,9 @@ member <- function(age=0, service=0, salary=0,
             service <- currentYear - hireYear;
         }
 
-        ## Generate an entire career's worth of salary history from
-        ## the single-year snapshot.
+        ## Generate an entire career's worth of salary history from the
+        ## single-year snapshot. This also outlines the retirement years, though
+        ## the pension itself is determined later.
         salaryHistory <- projectCareer(year=currentYear, age=age,
                                        service=service, salary=salary,
                                        sex=sex, mortClass=mortClass,
@@ -503,7 +515,7 @@ member <- function(age=0, service=0, salary=0,
     ## Estimate CAR for this employee.
     if ("retired" %in% salaryHistory$status) {
         car <- findRate(salaryHistory %>% mutate(netFlow = premium - pension),
-                        flowName="netFlow", verbose=verbose);
+                        flowName="netFlow", maxIter=200, verbose=verbose);
     } else {
         car <- NA;
     }
@@ -618,17 +630,37 @@ print.memberList <- function(ml, ...) {
 ## them to the input list of members.
 genEmployees <- function (N=1, ageRange=c(20,25), servRange=c(0,5),
                          avgSalary=75000, members=memberList(),
-                         sex="M", tier="1",
+                         sex="M", tier="1", currentYear=2022,
                          class="General", status="active",
                          verbose=FALSE) {
 
+    if (verbose) cat("Creating", N, "members in", currentYear, "\n",
+                     "avgSalary:", avgSalary, "age range:", ageRange[1], "-",
+                     ageRange[2], "service:", servRange[1], "-", servRange[2],
+                     "tier:", tier, "class:", class, "status:", status, "\n");
+    
     ages <- round(runif(N)*(ageRange[2] - ageRange[1])) + ageRange[1];
-    servs <- round(runif(N)*(servRange[2] - servRange[1])) + servRange[1];
+    ## Set a lower bound here so we don't have 26 year olds with 9
+    ## years of service.
+    servs <- sapply(round(runif(N)*(servRange[2] - servRange[1])) + servRange[1],
+                    function(x) { min(19, x) });
     salaries <- rnorm(N, mean=avgSalary, sd=5000);
+
+    ## The sex arg can be a list like (M=0.4, F=0.6) indicating
+    ## proportions of the population. We assume the components add up
+    ## to 1 and are only M and F. Will change this when mortality
+    ## tables change it.
+    if (is.list(sex)) {
+        sex <- ifelse(runif(N) < sex$M, "M", "F");
+    } else {
+        sex <- rep(sex, N);
+    }
 
     for (i in 1:N) {
         m <- member(age=ages[i], service=servs[i], salary=salaries[i],
-                    sex=sex, tier=tier, verbose=verbose);
+                    sex=sex[i], tier=tier, mortClass=class, status=status,
+                    currentYear=currentYear, verbose=verbose);
+
         members[[m$id]] <- m;
     }
 
@@ -750,13 +782,20 @@ runModelOnce <- function(modelConstructionFunction,
                      "to", head(tail(colnames(modelMCF),2),1), "\n");
 
     ## Compute the CAR for the overall results.
-    modelCAR <- findRate(modelMCF, flowName="sum", verbose=verbose);
+    modelCAR <- findRate(modelMCF, flowName="sum", maxIter=200, verbose=verbose);
 
     if (verbose) cat("model: CAR estimate:", modelCAR, "\n");
 
     ## Record the aggregate CAR under the year 1000 because why not.
-    modelOut <- tibble(ryear = c(1000),
-                       car = c(modelCAR - 1.0));
+    if (!is.na(modelCAR)) {
+        modelOut <- tibble(ryear = c(1000),
+                           car = c(modelCAR - 1.0));
+    } else {
+        ## This is a bad scene. Record everything and get out.
+        write.csv(modelTbl, file="dumpMemberTable.csv");
+        write.csv(modelMCF, file="dumpMasterCashFlow.csv");
+        stop("Something seriously wrong, check out dump files.");
+    }
 
     ## We are also interested in calculating the CAR for each
     ## retirement class. Note that there are two extra columns in the
@@ -765,10 +804,10 @@ runModelOnce <- function(modelConstructionFunction,
     minRetireYear <- min(modelTbl$retireYear, na.rm=TRUE);
     for (i in 1:(dim(modelMCF)[2] - 2)) {
         newYear <- minRetireYear + i - 1;
-        newRate <- findRate(modelMCF, flowName=paste0("R", newYear));
+        newRate <- findRate(modelMCF, flowName=paste0("R", newYear), maxIter=200);
 
         ## If no error, record the rate for this retirement class.
-        if (newRate != 1.0) {
+        if (!is.na(newRate)) {
             modelOut <- rbind(modelOut,
                               tibble(ryear=c(newYear), car=c(newRate - 1.0)));
         }
