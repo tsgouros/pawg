@@ -142,7 +142,7 @@ doesMemberDie <- function(memberAge, memberSex, memberStatus,
                             filter(age == memberAge) %>%
                             select(contains(tempStatus)));
 
-    if ((length(threshold) < 1) | is.null(threshold) | is.na(threshold)) {
+    if ((length(threshold) < 1) || is.null(threshold) || is.na(threshold)) {
         cat("\nerror establishing threshold, age=", memberAge,
             "status=", tempStatus, "\n");
         stop();

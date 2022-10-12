@@ -27,7 +27,7 @@ doesMemberSeparate <- function(age, service, status, tier="1",
 
 doesMemberRetire <- function(age, service, status, tier="1", verbose=FALSE) {
     ## If already retired, get out.
-    if ((status == "retired") | (status == "deceased")) return(status);
+    if ((status == "retired") || (status == "deceased")) return(status);
 
     ## The service years on input refer to years that have begun, but
     ## not necessarily completed.  We want completed years.  This is
@@ -44,8 +44,8 @@ doesMemberRetire <- function(age, service, status, tier="1", verbose=FALSE) {
     if (tier == "1") {
 
         if ((age >= 62) && (completedYears <= 20)) {
-            if ( ((age == 62) && (runif(1) > 0.4)) |
-                 (((age > 62) && (age < 70)) && (runif(1) > 0.5)) |
+            if ( ((age == 62) && (runif(1) > 0.4)) ||
+                 (((age > 62) && (age < 70)) && (runif(1) > 0.5)) ||
                  (age >= 70) ) {
                 status <- "retired";
             }
@@ -89,7 +89,7 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
                                      mortClass="General", tier="1",
                                      verbose=FALSE) {
     ## If already retired or disabled, don't change anything and get out.
-    if ((status == "retired") | (status == "deceased") |
+    if ((status == "retired") || (status == "deceased") ||
         (status == "disabled") ) return(status);
 
     ## These are rates for ages 20-25, 25-30, 30-35, etc

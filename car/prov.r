@@ -135,7 +135,7 @@ doesMemberDisableAccident <- function(age, sex, service, status,
             threshold <- rates[ floor((age-15)/5) ];
         } else if (age == 59) {
             threshold <- rates[9];
-        } else if ((age >= 60) | (age < 64)) {
+        } else if ((age >= 60) || (age < 64)) {
             threshold <- rates[10];
         } else if (age == 64) {
             threshold <- rates[11];
@@ -175,7 +175,7 @@ doesMemberDisableOrdinary <- function(age, sex, service, status,
             threshold <- rates[ floor((age-15)/5) ];
         } else if (age == 59) {
             threshold <- rates[9];
-        } else if ((age >= 60) | (age < 64)) {
+        } else if ((age >= 60) || (age < 64)) {
             threshold <- rates[10];
         } else if (age == 64) {
             threshold <- rates[11];
