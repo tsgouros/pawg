@@ -15,7 +15,7 @@ source("car.r")
 ## A or Class B, use the "tier" variable for this.
 
 doesMemberSeparate <- function(age, service, status, tier="A",
-                               verbose=FALSE) {
+                               mortClass="General", verbose=FALSE) {
     ## If this is not currently an active employee, get out.
     if (status != "active") return(status);
 
@@ -46,7 +46,8 @@ doesMemberSeparate <- function(age, service, status, tier="A",
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, tier="A", verbose=FALSE) {
+doesMemberRetire <- function(age, service, status, tier="A",
+                             mortClass="General", verbose=FALSE) {
     ## If already retired, disabled, or dead, get out.
     if (status %in% c("retired", "retired/survivor", "deceased",
                       "disabled/accident", "disabled/ordinary")) return(status);
@@ -199,7 +200,8 @@ doesMemberDisableOrdinary <- function(age, sex, service, status,
     return(status);
 }
 
-projectSalaryDelta <- function(year, age, salary, service=1, tier="A") {
+projectSalaryDelta <- function(year, age, salary, service=1, tier="A",
+                               mortClass="General", verbose=FALSE) {
     ## Page 12, "Salary Increases"
     if ((year > 1995) & (year < 2000)) {
         return(1.0);
@@ -210,7 +212,8 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier="A") {
 
 
 ## For Providence system, see 1996 val report, p15ff.
-projectBasePension <- function(salaryHistory, tier="A", verbose=FALSE) {    
+projectBasePension <- function(salaryHistory, tier="A", mortClass="General",
+                               verbose=FALSE) {    
     
     ## Find first entry that is *not* active or separated.
     retirementType <- first(salaryHistory$status[!salaryHistory$status %in%
@@ -297,7 +300,7 @@ projectBasePension <- function(salaryHistory, tier="A", verbose=FALSE) {
 ## Apply the base pension to the first retirement year, then roll it
 ## forward according to the COLA for that tier and year.
 projectPensionPayments <- function(salaryHistory, basePension, tier="A",
-                                   verbose=FALSE) {
+                                   mortClass="General", verbose=FALSE) {
 
     retireYear <- salaryHistory %>%
         filter(status %in% c("retired","disabled/accident", "disabled/ordinary")) %>%
@@ -346,7 +349,8 @@ projectPensionPayments <- function(salaryHistory, basePension, tier="A",
 
     
 
-projectPension <- function(salaryHistory, tier="A", verbose=FALSE) {
+projectPension <- function(salaryHistory, tier="A", mortClass="General",
+                           verbose=FALSE) {
 
     basePension <- projectBasePension(salaryHistory, tier, verbose=verbose);
 
@@ -363,7 +367,8 @@ projectPension <- function(salaryHistory, tier="A", verbose=FALSE) {
 ## premiums paid into the system for this employee for each year.
 ## (Combined employer and employee share, do not include amortization
 ## payments.)
-projectPremiums <- function(salaryHistory, tier="A", verbose=FALSE) {
+projectPremiums <- function(salaryHistory, tier="A", mortClass="General",
+                            verbose=FALSE) {
 
     if (tier == "A") {
         premiumPerPayroll <- .081;
@@ -872,6 +877,6 @@ provModel <- function(verbose=FALSE) {
     return(provModel);
 }
 
-provModelOutput <- runModel(provModel, N=75, verbose=TRUE, reallyVerbose=FALSE,
+provModelOutput <- runModel(provModel, N=1, verbose=TRUE, reallyVerbose=FALSE,
                             audit=TRUE);
 

@@ -35,10 +35,11 @@ source("mortality.r")
 ## should be overridden with definitions from the data in the
 ## appropriate valuation report.
 
-## These functions (doIseparate and doIretire) give the probability of
-## separation or retirement, given the age and service years of the
-## employee.
-doesMemberSeparate <- function(age, service, status, tier="1", verbose=FALSE) {
+## These functions (doesMemberSeparate and doesMemberRetire) give the
+## probability of separation or retirement, given the age and service
+## years of the employee.
+doesMemberSeparate <- function(age, service, status, tier="1",
+                               mortClass="General", verbose=FALSE) {
     cat("Running default doesMemberSeparate.\n");
 
     ## If this is not currently an active employee, get out.
@@ -55,7 +56,8 @@ doesMemberSeparate <- function(age, service, status, tier="1", verbose=FALSE) {
     return(status);
 }
 
-doesMemberRetire <- function(age, service, status, tier="1", verbose=FALSE) {
+doesMemberRetire <- function(age, service, status, tier="A",
+                             mortClass="General", verbose=FALSE) {
     cat("Running default doesMemberRetire.\n");
 
     ## If already retired, get out.
@@ -110,6 +112,11 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
     return(status);
 }
 
+## doesMemberHaveSurvivor <- function(age, sex, status, tier="1",
+##                                    mortClass="General", verbose=FALSE) {
+##     cat("Running default doesMemberHaveSurvivor.\n");
+    
+## }
 
 ## Defines the function 'doesMemberDie' using the pubs 2010 mortality
 ## tables in the mortalityTables subdirectory.
@@ -141,7 +148,8 @@ projectSalaryDelta <- function(year, age, salary, service=1, tier="1",
     return(out);
 }
 
-projectPension <- function(salaryHistory, tier="1", verbose=FALSE) {
+projectPension <- function(salaryHistory, tier="1", mortClass="General",
+                           verbose=FALSE) {
     cat("Running default projectPension.\n");
 
     startingPension <- max(salaryHistory$salary) * 0.55;
@@ -296,12 +304,23 @@ simulateCareerForward <- function(year, age, service, salary,
         currentStatus <-
             doesMemberDie(testAge, sex, currentStatus,
                           mortClass=mortClass, verbose=verbose);
+
+        ## ## Check for a survivor?
+        ## s <- doesMemberHaveSurvivor(testAge, sex, currentStatus, tier=tier,
+        ##                             mortClass=mortClass, verbose=verbose);
+        ## if ((s$status == "retired/survivor") && (currentStatus == "deceased")) {
+        ##     ## There is a survivor, reset the age.
+        ##     testAge <- s$survivorAge;
+        ##     currentStatus <- s$status;
+        ## }
+        
         currentStatus <-
-            doesMemberSeparate(testAge, currentService, currentStatus);
+            doesMemberSeparate(testAge, currentService, currentStatus,
+                               tier=tier, mortClass=mortClass, verbose=verbose);
 
         currentStatus <-
             doesMemberRetire(testAge, currentService, currentStatus,
-                             tier=tier, verbose=verbose);
+                             tier=tier, mortClass=mortClass, verbose=verbose);
 
         if (verbose) cat (", end as:", currentStatus, ".\n", sep="");
 
@@ -488,17 +507,20 @@ member <- function(age=0, service=0, salary=0,
 
         ## Generate the rest of a career's worth of salary history
         ## from the history we've been given.
-        salaryHistory <- projectCareer(salaryHistory=salaryHistory, sex=sex,
+        salaryHistory <- projectCareer(salaryHistory=salaryHistory, age=age,
+                                       service=service, sex=sex,
                                        mortClass=mortClass, tier=tier,
                                        verbose=verbose);
     }
 
     ## Add the premiums paid into the system.
-    salaryHistory <- projectPremiums(salaryHistory);
+    salaryHistory <- projectPremiums(salaryHistory, tier=tier, mortClass=mortClass,
+                                     verbose=verbose);
 
     ## If this member gets to retire, estimate pension.
     if ("retired" %in% salaryHistory$status) {
-        salaryHistory <- projectPension(salaryHistory, tier);
+        salaryHistory <- projectPension(salaryHistory, tier=tier,
+                                        mortClass=mortClass, verbose=verbose);
         retireYear <- as.numeric(salaryHistory %>%
             filter(status=="retired") %>% summarize(retireYear=min(year)));
     } else {
