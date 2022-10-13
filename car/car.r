@@ -61,7 +61,7 @@ doesMemberRetire <- function(age, service, status, tier="A",
     cat("Running default doesMemberRetire.\n");
 
     ## If already retired, get out.
-    if ((status == "retired") | (status == "deceased") |
+    if ((status == "retired") || (status == "deceased") |
         (status == "disabled") ) return(status);
 
     ## The service years on input refer to years that have begun, but
@@ -72,8 +72,8 @@ doesMemberRetire <- function(age, service, status, tier="A",
     completedYears <- service - 1;
 
     if ((age >= 62) && (completedYears >= 15)) {
-        if ( ((age == 62) && (runif(1) > 0.4)) |
-             (((age > 62) && (age < 70)) && (runif(1) > 0.5)) |
+        if ( ((age == 62) && (runif(1) > 0.4)) ||
+             (((age > 62) && (age < 70)) && (runif(1) > 0.5)) ||
              (age >= 70) ) {
             status <- "retired";
         }
@@ -96,7 +96,7 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
     cat("Running default doesMemberBecomeDisabled.\n");
 
     ## If already retired or disabled, don't change anything and get out.
-    if ((status == "retired") | (status == "deceased") |
+    if ((status == "retired") || (status == "deceased") ||
         (status == "disabled") ) return(status);
 
     ## These are rates for ages 20-25, 25-30, 30-35, etc
@@ -112,11 +112,28 @@ doesMemberBecomeDisabled <- function(age, sex, service, status,
     return(status);
 }
 
-## doesMemberHaveSurvivor <- function(age, sex, status, tier="1",
-##                                    mortClass="General", verbose=FALSE) {
-##     cat("Running default doesMemberHaveSurvivor.\n");
+doesMemberHaveSurvivor <- function(age, sex, status, survivor,
+                                   tier=tier, mortClass=mortClass,
+                                   verbose=verbose) {
+
+    cat("Running default doesMemberHaveSurvivor\n");
+
+    if (verbose) cat("Member: age:", age, "sex:", sex, "status:", status, "\n")
     
-## }
+    ## We only want to do this once. And we probably want to do better
+    ## (less retro?) choices of sex and age in the specialized versions.
+    if ((status == "retired") && (survivor$status == "")) {
+        if (verbose) cat("Creating a survivor...");
+        survivor$status <- "retired/survivor";
+        survivor$age <- age - 5;
+        survivor$sex <- ifelse(sex=="M", "F", "M"); 
+    }
+
+    if (verbose) cat("Survivor is age:", survivor$age, "sex:", survivor$sex,
+                     "status:", survivor$status, "\n");
+
+    return(survivor);
+}
 
 ## Defines the function 'doesMemberDie' using the pubs 2010 mortality
 ## tables in the mortalityTables subdirectory.
@@ -159,15 +176,24 @@ projectPension <- function(salaryHistory, tier="1", mortClass="General",
     if (!("retired" %in% salaryHistory$status))
         return(salaryHistory %>% mutate(pension = 0));
 
-    retireYear <- as.numeric(salaryHistory %>%
-                             filter(status=="retired") %>%
-                             summarize(retireYear=min(year)));
+    retireYear <- salaryHistory %>%
+        filter(status=="retired") %>%
+        summarize(retireYear=min(year)) %>%
+        as.numeric()
 
-    return(salaryHistory %>%
-           mutate(pension = ifelse(status == "retired",
+    salaryHistory <- salaryHistory %>%
+        mutate(pension={if ("survivorStatus" %in% names(.))
+                            ifelse(status == "retired",
                                    startingPension * cola^(year - retireYear),
-                                   0)));
+                            ifelse(survivorStatus != "deceased",
+                                   0.67 * startingPension * cola^(year - retireYear),
+                                   0))
+                        else
+                            ifelse(status == "retired",
+                                   startingPension * cola^(year - retireYear),
+                                   0)})
 
+    return(salaryHistory);
 }
 
 ## Accepts a salary history tibble and adds a column for the estimated
@@ -284,6 +310,9 @@ simulateCareerForward <- function(year, age, service, salary,
     ages <- c(age);
     services <- c(service);
     statuses <- c(as.character(status));
+    survivorStatuses <- c();
+    survivorAges <- c();
+    
     fromData <- c(TRUE);  ## The first year is from data, the rest are sims.
     years <- c(year);
 
@@ -291,28 +320,43 @@ simulateCareerForward <- function(year, age, service, salary,
     ## hit "deceased."
     currentStatus <- status;
     currentService <- service + 1;
+   
+    survivor <- list(status="", age=0, sex="");
     iyear <- year + 1;
-    while((iyear < (year + (110 - age))) && (currentStatus != "deceased")) {
+    ## The loop is supposed to terminate when retiree and survivor are
+    ## deceased. This limit is here just in case.
+    while(iyear < (year + (150 - age))) {
 
         testAge <- age - (year - iyear);
 
-        if (verbose) cat (iyear, ": At age: ", testAge,
+        if (verbose) cat (">>>", iyear, ": At age: ", testAge,
                           ", service: ", currentService,
-                          ", start as: ", currentStatus, sep="");
+                          ", start as: ", currentStatus, "\n", sep="");
 
         ## Test for transitions.
+
+        ## Check for a survivor? Note that we (might) create a survivor here,
+        ## but we don't add his or her data to the salary history until the
+        ## currentStatus is "deceased", below.
+        if (currentStatus == "retired")
+            survivor <-
+                doesMemberHaveSurvivor(testAge, sex, currentStatus, survivor,
+                                       tier=tier, mortClass=mortClass,
+                                       verbose=verbose);
+
         currentStatus <-
             doesMemberDie(testAge, sex, currentStatus,
                           mortClass=mortClass, verbose=verbose);
 
-        ## ## Check for a survivor?
-        ## s <- doesMemberHaveSurvivor(testAge, sex, currentStatus, tier=tier,
-        ##                             mortClass=mortClass, verbose=verbose);
-        ## if ((s$status == "retired/survivor") && (currentStatus == "deceased")) {
-        ##     ## There is a survivor, reset the age.
-        ##     testAge <- s$survivorAge;
-        ##     currentStatus <- s$status;
-        ## }
+        ## Is there a survivor receiving benefits? Start accumulating his or
+        ## her data, and check to see if he or she dies.
+        if ((currentStatus == "deceased") &&
+            (survivor$status == "retired/survivor")) {
+            survivor$status <- doesMemberDie(survivor$age, survivor$sex,
+                                             survivor$status, verbose=verbose);
+            survivorAges <- c(survivorAges, survivor$age);
+            survivorStatuses <- c(survivorStatuses, survivor$status);
+        }
         
         currentStatus <-
             doesMemberSeparate(testAge, currentService, currentStatus,
@@ -322,7 +366,7 @@ simulateCareerForward <- function(year, age, service, salary,
             doesMemberRetire(testAge, currentService, currentStatus,
                              tier=tier, mortClass=mortClass, verbose=verbose);
 
-        if (verbose) cat (", end as:", currentStatus, ".\n", sep="");
+        if (verbose) cat ("<<< end as:", currentStatus, "\n", sep="");
 
         salaries <-
             c(salaries,
@@ -339,22 +383,48 @@ simulateCareerForward <- function(year, age, service, salary,
         years <- c(years, iyear);
         fromData <- c(fromData, FALSE);
 
-        if (currentStatus == "deceased") break;
+        ## Is there a survivor and is he or she dead?
+        if (survivor$status == "deceased") break;
+
+        ## If the member is dead and there is no survivor, break.
+        if ((currentStatus == "deceased") &&
+            (survivor$status != "retired/survivor")) break;
 
         ## Add a service year if still active.  Note that the ending
         ## total of service years will be one year too large.  This is
         ## because we're dealing with integer years and the
         ## transitions happen *during* a year.
         if (currentStatus == "active") currentService <- currentService + 1;
+
+        ## If we're carrying a survivor along, age him or her one year.
+        survivor$age <- survivor$age + 1;
+
         iyear <- iyear + 1;
     }
 
-    return(tibble(year=years,
-                  salary=salaries,
-                  age=ages,
-                  service=services,
-                  fromData=fromData,
-                  status=statuses));
+    if (length(survivorStatuses) > 0) {
+        output <- tibble(year=years,
+                         salary=salaries,
+                         age=ages,
+                         service=services,
+                         fromData=fromData,
+                         status=statuses,
+                         survivorAge=c(rep(0, length(ages) - length(survivorAges)),
+                                       survivorAges),
+                         survivorStatus=c(rep(0, length(ages) - length(survivorAges)),
+                                          survivorStatuses));
+    } else {
+        output <- tibble(year=years,
+                         salary=salaries,
+                         age=ages,
+                         service=services,
+                         fromData=fromData,
+                         status=statuses,
+                         survivorAge=c(rep(0, length(ages))),
+                         survivorStatus=c(rep(0, length(ages))))
+    }
+    
+    return(output);
 }
 
 ## Given a few years of salary, project the rest of a member's career
@@ -410,7 +480,12 @@ projectCareerFromRecord <- function(salaryHistory, sex="M",
                               rep(0, length(forward$salary) - 1)),
                   status=factor(c(backward$status,
                                   as.character(salaryHistory$status),
-                                  tail(forward$status, -1)))));
+                                  tail(forward$status, -1))),
+                  survivorAge=c(rep(0, length(backward$status)),
+                                forward$survivorAge),
+                  survivorStatus=c(rep(0, length(backward$status)),
+                                   forward$survivorStatus)));
+
 }
 
 
@@ -444,7 +519,11 @@ projectCareerFromOneYear <- function(year, age, service, salary, sex="M",
                   fromData=c(backward$fromData, forward$fromData),
                   premium=rep(0, length(backward$salary) +
                                  length(forward$salary)),
-                  status=factor(c(backward$status, forward$status))));
+                  status=factor(c(backward$status, forward$status)),
+                  survivorAge=c(rep(0, length(backward$status)),
+                                forward$survivorAge),
+                  survivorStatus=c(rep(0, length(backward$status)),
+                                   forward$survivorStatus)));
 }
 
 ## Here's an object for a member, initialized for some specific year.
@@ -734,7 +813,7 @@ buildMasterCashFlow <- function(memberTbl, members, verbose=FALSE) {
     nYears <- endYear - startYear + 1;
 
     if (verbose) cat("Starting at", startYear, "ending at", endYear,
-                     "n =", nYears, "\n");
+                     "n :", nYears, "\n");
 
     ## Loop through all the potential retirement classes, even if
     ## they're empty.
