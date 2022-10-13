@@ -90,6 +90,9 @@ doesMemberDie <- function(memberAge, memberSex, memberStatus,
                           mortClass="General", memberSalary=0,
                           weight="headcount", verbose=FALSE) {
 
+    ## If the member is already dead, they can't be deader.
+    if (memberStatus == "deceased") return(memberStatus);
+    
     if (verbose) cat("\n   rolling dice for ", mortClass,
                      "; ", memberStatus, " member (", memberSex,
                      "), aged ", memberAge, "...", sep="");
@@ -137,15 +140,18 @@ doesMemberDie <- function(memberAge, memberSex, memberStatus,
         memberAge <- 80;
     }
 
+    ## We can also handle survivor and disability retirements.
+    if (memberStatus == "retired/survivor") tempStatus <- "survivor";
+    if (grepl("disabled", memberStatus)) tempStatus <- "disabled";
+
     ## Find the threshold for this member.
     threshold <- as.numeric(table %>%
                             filter(age == memberAge) %>%
                             select(contains(tempStatus)));
 
     if ((length(threshold) < 1) || is.null(threshold) || is.na(threshold)) {
-        cat("\nerror establishing threshold, age=", memberAge,
-            "status=", tempStatus, "\n");
-        stop();
+        stop("\nerror establishing threshold, age=", memberAge,
+            " status=", tempStatus, " threshold=", threshold);
     }
 
     ## Roll the dice.
